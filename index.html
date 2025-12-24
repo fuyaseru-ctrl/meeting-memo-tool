@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <title>面談メモ一発生成</title>
+  <title>面談メモ生成</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
@@ -11,7 +11,7 @@
       padding: 20px;
     }
     .box {
-      max-width: 600px;
+      max-width: 480px;
       margin: auto;
       background: #fff;
       padding: 20px;
@@ -28,7 +28,7 @@
       font-size: 13px;
       color: #555;
     }
-    select, button {
+    input, select, button {
       width: 100%;
       padding: 10px;
       margin-top: 6px;
@@ -43,15 +43,13 @@
       cursor: pointer;
       font-weight: bold;
     }
-    button:hover {
-      opacity: .9;
-    }
     textarea {
       width: 100%;
-      height: 120px;
+      height: 160px;
       margin-top: 16px;
-      font-size: 15px;
+      font-size: 14px;
       padding: 10px;
+      font-family: monospace;
     }
   </style>
 </head>
@@ -60,11 +58,20 @@
 <div class="box">
   <h1>📅 面談メモ生成ツール</h1>
 
-  <label>日付</label>
-  <select id="date"></select>
+  <label>日付（カレンダー）</label>
+  <input type="date" id="date">
 
   <label>開始時間</label>
-  <select id="time"></select>
+  <select id="time">
+    <option>10時～面談開始</option>
+    <option>11時～面談開始</option>
+    <option>12時～面談開始</option>
+    <option>13時～面談開始</option>
+    <option>14時～面談開始</option>
+    <option>15時～面談開始</option>
+    <option>16時～面談開始</option>
+    <option>17時～面談開始</option>
+  </select>
 
   <label>面談方法</label>
   <select id="method">
@@ -80,39 +87,29 @@
 </div>
 
 <script>
-const dateSelect = document.getElementById("date");
-const timeSelect = document.getElementById("time");
-const result = document.getElementById("result");
 const week = ["日","月","火","水","木","金","土"];
-
-// 日付生成（今日〜2030年末）
-const today = new Date();
-const end = new Date(2030, 11, 31);
-for (let d = new Date(today); d <= end; d.setDate(d.getDate() + 1)) {
-  const opt = document.createElement("option");
-  opt.value = d.toISOString();
-  opt.textContent = `${d.getMonth()+1}月${d.getDate()}日（${week[d.getDay()]}曜日）`;
-  dateSelect.appendChild(opt);
-}
-
-// 時間生成（10〜17時）
-for (let h = 10; h <= 17; h++) {
-  const opt = document.createElement("option");
-  opt.textContent = `${h}時～面談開始`;
-  timeSelect.appendChild(opt);
-}
+const line = "──────────────";
 
 function buildText() {
-  const d = new Date(dateSelect.value);
-  const dateText = `${d.getMonth()+1}月${d.getDate()}日（${week[d.getDay()]}曜日）`;
-  const timeText = timeSelect.value;
+  const dateValue = document.getElementById("date").value;
+  if (!dateValue) return "";
+
+  const d = new Date(dateValue);
+  const dateText = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${week[d.getDay()]}）`;
+  const timeText = document.getElementById("time").value;
   const methodText = document.getElementById("method").value;
 
-  return `${dateText}\n${timeText}\n面談方法：${methodText}`;
+  return `${line}
+面談予約日時
+${dateText}
+${timeText}
+方法：${methodText}
+${line}`;
 }
 
 function copyText() {
   const text = buildText();
+  const result = document.getElementById("result");
   result.value = text;
   result.select();
   document.execCommand("copy");
