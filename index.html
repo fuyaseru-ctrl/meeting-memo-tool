@@ -2,119 +2,281 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <title>面談メモ生成</title>
+  <title>面談メモ生成ツール</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <style>
+    * { box-sizing: border-box; }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
       background: #f5f7fb;
       padding: 20px;
     }
+
     .box {
-      max-width: 480px;
+      max-width: 520px;
       margin: auto;
       background: #fff;
       padding: 20px;
-      border-radius: 12px;
+      border-radius: 14px;
       box-shadow: 0 8px 20px rgba(0,0,0,.08);
     }
+
     h1 {
       font-size: 18px;
-      margin-bottom: 16px;
+      margin: 0 0 16px;
     }
+
     label {
       display: block;
       margin-top: 12px;
       font-size: 13px;
       color: #555;
     }
-    input, select, button {
+
+    input, select, button, textarea {
       width: 100%;
       padding: 10px;
       margin-top: 6px;
       font-size: 15px;
+      border-radius: 10px;
+      border: 1px solid #d7dbe6;
+      background: #fff;
     }
+
+    /* ✅ date の「アイコンがはみ出る」対策 + 「枠内どこ押してもカレンダー」化 */
+    .dateWrap { position: relative; }
+    input[type="date"] {
+      padding-right: 12px;
+    }
+    /* WebKit系（Chrome/Edge/Safari）: カレンダーインジケータを入力欄全体に広げる */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      opacity: 0;              /* 見えなくする（タップは生きる） */
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .btnRow {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
     button {
-      margin-top: 16px;
+      border: none;
+      cursor: pointer;
+      font-weight: 800;
       background: #2563eb;
       color: #fff;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
     }
+
+    button.secondary {
+      background: #111827;
+    }
+
+    button:hover { opacity: .92; }
+
+    .mini {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #667085;
+    }
+
     textarea {
-      width: 100%;
-      height: 160px;
-      margin-top: 16px;
+      height: 260px;
+      margin-top: 12px;
       font-size: 14px;
-      padding: 10px;
-      font-family: monospace;
+      line-height: 1.6;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Noto Sans Mono", monospace;
+      white-space: pre-wrap;
+    }
+
+    .status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #0f766e;
+      min-height: 16px;
     }
   </style>
 </head>
+
 <body>
+  <div class="box">
+    <h1>🗓 面談メモ生成ツール</h1>
 
-<div class="box">
-  <h1>📅 面談メモ生成ツール</h1>
+    <label>日付（カレンダー）</label>
+    <div class="dateWrap">
+      <input type="date" id="date">
+    </div>
 
-  <label>日付（カレンダー）</label>
-  <input type="date" id="date">
+    <label>開始時間（10〜17時）</label>
+    <select id="time"></select>
 
-  <label>開始時間</label>
-  <select id="time">
-    <option>10時～面談開始</option>
-    <option>11時～面談開始</option>
-    <option>12時～面談開始</option>
-    <option>13時～面談開始</option>
-    <option>14時～面談開始</option>
-    <option>15時～面談開始</option>
-    <option>16時～面談開始</option>
-    <option>17時～面談開始</option>
-  </select>
+    <label>面談方法</label>
+    <select id="method">
+      <option>Google Meet</option>
+      <option>電話</option>
+      <option>LINE</option>
+      <option>メール</option>
+    </select>
 
-  <label>面談方法</label>
-  <select id="method">
-    <option>Google Meet</option>
-    <option>電話</option>
-    <option>LINE</option>
-    <option>メール</option>
-  </select>
+    <div class="btnRow">
+      <button id="copyAllBtn">全文コピー（送信用）</button>
+      <button class="secondary" id="copyDateBtn">日時だけコピー</button>
+    </div>
 
-  <button onclick="copyText()">コピー</button>
+    <div class="status" id="status"></div>
 
-  <textarea id="result" readonly></textarea>
-</div>
+    <div class="mini">下のプレビューは自動更新されます（そのまま貼り付けOK）</div>
+    <textarea id="preview" readonly></textarea>
+  </div>
 
 <script>
-const week = ["日","月","火","水","木","金","土"];
-const line = "──────────────";
+(() => {
+  const week = ["日","月","火","水","木","金","土"];
 
-function buildText() {
-  const dateValue = document.getElementById("date").value;
-  if (!dateValue) return "";
+  // 罫線は「文字数固定」＝端末依存しにくい
+  const LINE = "──────────────";
 
-  const d = new Date(dateValue);
-  const dateText = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${week[d.getDay()]}）`;
-  const timeText = document.getElementById("time").value;
-  const methodText = document.getElementById("method").value;
+  const dateEl = document.getElementById("date");
+  const timeEl = document.getElementById("time");
+  const methodEl = document.getElementById("method");
+  const previewEl = document.getElementById("preview");
+  const statusEl = document.getElementById("status");
+  const copyAllBtn = document.getElementById("copyAllBtn");
+  const copyDateBtn = document.getElementById("copyDateBtn");
 
-  return `${line}
+  // 時間生成（10〜17）
+  function buildTimes() {
+    timeEl.innerHTML = "";
+    for (let h = 10; h <= 17; h++) {
+      const opt = document.createElement("option");
+      opt.value = String(h);
+      opt.textContent = `${h}時～面談開始`;
+      timeEl.appendChild(opt);
+    }
+  }
+
+  // 今日をデフォルトセット（任意で便利）
+  function setToday() {
+    const t = new Date();
+    const yyyy = t.getFullYear();
+    const mm = String(t.getMonth()+1).padStart(2,"0");
+    const dd = String(t.getDate()).padStart(2,"0");
+    dateEl.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  function fmtDateParts() {
+    const v = dateEl.value;
+    if (!v) return null;
+    const d = new Date(v + "T00:00:00");
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const dow = week[d.getDay()];
+    const h = Number(timeEl.value || 10);
+    const method = methodEl.value;
+
+    return { y, m, day, dow, h, method };
+  }
+
+  // ✅ 「日時BOX」（これを“日時のみコピー”で使う）
+  function buildDateBox() {
+    const p = fmtDateParts();
+    if (!p) return "";
+
+    return `${LINE}
 面談予約日時
-${dateText}
-${timeText}
-方法：${methodText}
-${line}`;
-}
+${p.y}年${p.m}月${p.day}日（${p.dow}）
+${p.h}時～面談開始
+方法：${p.method}
+${LINE}`;
+  }
 
-function copyText() {
-  const text = buildText();
-  const result = document.getElementById("result");
-  result.value = text;
-  result.select();
-  document.execCommand("copy");
-}
+  // ✅ 「全文テンプレ」（必ず出る固定文 + 日時BOX挿入）
+  function buildFullMessage() {
+    const p = fmtDateParts();
+    if (!p) return "";
+
+    const dateBox = buildDateBox();
+
+    return `フヤセルサポートです。
+ご連絡いただきありがとうございます。
+
+${dateBox}
+
+ご指定のお時間に
+空き枠がございましたので
+上記日程にて面談に
+入らせていただきます。
+
+面談の際には
+
+「フヤセルAIの準備」
+「聞きたいこと」
+「サポートを受けたいこと」
+
+こちらをご用意・ご準備のうえ
+ご参加いただけますと幸いです。
+
+その間でも
+ご質問などがございましたら
+
+しっかり丁寧にサポート対応を
+させていただきますので
+
+ご不明点がございます場合は
+お問い合わせくださいませ。
+
+何卒よろしくお願いいたします。`;
+  }
+
+  function renderPreview() {
+    const text = buildFullMessage();
+    previewEl.value = text || "日付を選ぶとプレビューが出ます";
+    statusEl.textContent = "";
+  }
+
+  async function copyText(text, okMsg) {
+    if (!text) {
+      statusEl.textContent = "日付を選んでください";
+      statusEl.style.color = "#b45309";
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      statusEl.textContent = okMsg;
+      statusEl.style.color = "#0f766e";
+    } catch {
+      // フォールバック
+      previewEl.focus();
+      previewEl.select();
+      document.execCommand("copy");
+      statusEl.textContent = okMsg + "（互換コピー）";
+      statusEl.style.color = "#0f766e";
+    }
+    setTimeout(() => statusEl.textContent = "", 1500);
+  }
+
+  // Events
+  dateEl.addEventListener("change", renderPreview);
+  timeEl.addEventListener("change", renderPreview);
+  methodEl.addEventListener("change", renderPreview);
+
+  copyAllBtn.addEventListener("click", () => copyText(buildFullMessage(), "全文をコピーしました"));
+  copyDateBtn.addEventListener("click", () => copyText(buildDateBox(), "日時だけコピーしました"));
+
+  // init
+  buildTimes();
+  setToday();
+  renderPreview();
+})();
 </script>
-
 </body>
 </html>
