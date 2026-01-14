@@ -1,92 +1,105 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>フヤセル顧客管理＆作成ツール</title>
-<style>
-  /* --- ベース設定 --- */
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: #f5f7fb;
-    color: #333;
-    padding: 20px;
-    margin: 0;
-  }
-  .container { max-width: 1000px; margin: 0 auto; }
+  <meta charset="utf-8">
+  <title>フヤセル予約管理＆生成ツール</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  /* カードデザイン */
-  .card {
-    background: #fff;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    margin-bottom: 20px;
-  }
+  <style>
+    /* --- 基本設定（頂いたコードベース） --- */
+    * { box-sizing: border-box; }
 
-  h2 { margin-top: 0; font-size: 18px; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
+      background: #f5f7fb;
+      padding: 20px;
+    }
 
-  /* --- リスト・検索エリア --- */
-  .filter-area { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
-  input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
-  .btn-filter {
-    padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;
-    font-weight: bold; background: #e0e0e0; color: #555;
-  }
-  .btn-filter.active { background: #1565c0; color: #fff; }
+    /* --- 上部：予約リスト用スタイル（新規追加） --- */
+    .list-container {
+      max-width: 800px; /* リストは少し広めに */
+      margin: 0 auto 30px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 14px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.08);
+    }
+    .filter-area { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+    .filter-area input { margin-top: 0; } /* 調整 */
+    .btn-filter {
+      padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer;
+      font-weight: bold; background: #e0e0e0; color: #555;
+    }
+    .btn-filter.active { background: #2563eb; color: #fff; }
+    
+    .table-wrapper { max-height: 250px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 13px; }
+    th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+    th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 1; }
+    tr.clickable { cursor: pointer; transition: background 0.1s; }
+    tr.clickable:hover { background-color: #e3f2fd; }
+    tr.selected { background-color: #bbdefb; border-left: 5px solid #2563eb; }
 
-  .table-wrapper { max-height: 300px; overflow-y: auto; border: 1px solid #eee; }
-  table { width: 100%; border-collapse: collapse; white-space: nowrap; }
-  th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; font-size: 14px; }
-  th { background-color: #f8f9fa; position: sticky; top: 0; }
-  tr.clickable { cursor: pointer; transition: background 0.2s; }
-  tr.clickable:hover { background-color: #e3f2fd; }
-  tr.selected { background-color: #bbdefb; border-left: 5px solid #1976d2; }
+    /* --- 下部：生成ツール用スタイル（頂いたコードそのまま） --- */
+    .box {
+      max-width: 520px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 14px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.08);
+    }
 
-  /* --- ツールエリア（復活＆修正版） --- */
-  label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #555; }
-  
-  /* 入力フォームのデザイン */
-  .input-group { margin-top: 5px; }
-  input, select, textarea {
-    width: 100%; padding: 12px;
-    border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box;
-    background: #fafafa;
-  }
-  input:focus, select:focus, textarea:focus {
-    border-color: #2563eb; background: #fff; outline: none;
-  }
+    h1 { font-size: 18px; margin: 0 0 16px; }
+    h2 { font-size: 16px; margin: 0 0 10px; color: #555; border-bottom: 1px solid #eee; padding-bottom: 8px;}
 
-  /* ボタンエリア */
-  .btn-area { display: flex; gap: 10px; margin-top: 20px; }
-  .btn-copy {
-    flex: 1; padding: 14px; border: none; border-radius: 8px;
-    color: #fff; font-weight: bold; cursor: pointer; font-size: 16px;
-    transition: transform 0.1s;
-  }
-  .btn-blue { background-color: #2563eb; } /* 全文コピー用 */
-  .btn-dark { background-color: #1e293b; } /* 日時だけコピー用 */
-  .btn-copy:active { opacity: 0.8; transform: translateY(2px); }
+    label { display: block; margin-top: 12px; font-size: 13px; color: #555; }
 
-  /* スマホ対応 */
-  @media (max-width: 600px) {
-    .filter-area, .btn-area { flex-direction: column; }
-  }
-</style>
+    input, select, button, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      font-size: 15px;
+      border-radius: 10px;
+      border: 1px solid #d7dbe6;
+      background: #fff;
+    }
+
+    /* dateのアイコン対策 */
+    .dateWrap { position: relative; }
+    input[type="date"] { padding-right: 12px; }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      opacity: 0; position: absolute; right: 0; top: 0; width: 100%; height: 100%; cursor: pointer;
+    }
+
+    .btnRow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    button { border: none; cursor: pointer; font-weight: 800; background: #2563eb; color: #fff; }
+    button.secondary { background: #111827; }
+    button:hover { opacity: .92; }
+    .mini { margin-top: 10px; font-size: 12px; color: #667085; }
+    
+    textarea {
+      height: 260px; margin-top: 12px; font-size: 14px; line-height: 1.6;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Noto Sans Mono", monospace;
+      white-space: pre-wrap;
+    }
+    .status { margin-top: 8px; font-size: 12px; color: #0f766e; min-height: 16px; }
+
+  </style>
 </head>
+
 <body>
 
-<div class="container">
-
-  <div class="card">
+  <div class="list-container">
+    <h2>📅 予約リストから選択</h2>
     <div class="filter-area">
-      <button class="btn-filter active" id="btnToday" onclick="filterData('today')">今日のみ</button>
-      <button class="btn-filter" id="btnAll" onclick="filterData('all')">全て表示</button>
-      <input type="text" id="searchInput" placeholder="名前で検索..." onkeyup="searchData()">
+      <button class="btn-filter active" id="btnToday">今日のみ</button>
+      <button class="btn-filter" id="btnAll">全て表示</button>
+      <input type="text" id="searchInput" placeholder="名前検索..." style="flex:1;">
     </div>
     
-    <div id="loading">データを読み込んでいます...<br><small>（リストをクリックすると下のツールに入力されます）</small></div>
-    
+    <div id="loading" style="font-size:12px; color:#666;">読み込み中...</div>
+
     <div class="table-wrapper">
       <table id="customerTable" style="display:none;">
         <thead>
@@ -94,7 +107,6 @@
             <th>来店日</th>
             <th>時間</th>
             <th>お名前</th>
-            <th>担当</th>
             <th>ステータス</th>
           </tr>
         </thead>
@@ -103,218 +115,264 @@
       </table>
     </div>
   </div>
+  <div class="box" id="toolBox">
+    <h1>🗓 面談メモ生成ツール</h1>
 
-  <div class="card" id="toolArea">
-    <h2>📝 面談メモ・メール生成ツール</h2>
-    
-    <label>日付</label>
-    <input type="text" id="inputDate" placeholder="例: 2026年1月14日 (水)">
-    
-    <label>開始時間（～付き）</label>
-    <select id="inputTime" onchange="updatePreview()">
-      <option value="10時～面談開始">10時～面談開始</option>
-      <option value="11時～面談開始">11時～面談開始</option>
-      <option value="12時～面談開始">12時～面談開始</option>
-      <option value="13時～面談開始">13時～面談開始</option>
-      <option value="14時～面談開始">14時～面談開始</option>
-      <option value="15時～面談開始">15時～面談開始</option>
-      <option value="16時～面談開始">16時～面談開始</option>
-      <option value="17時～面談開始">17時～面談開始</option>
-      <option value="18時～面談開始">18時～面談開始</option>
-      <option value="19時～面談開始">19時～面談開始</option>
-      <option value="20時～面談開始">20時～面談開始</option>
-      <option value="21時～面談開始">21時～面談開始</option>
-      <option value="22時～面談開始">22時～面談開始</option>
-    </select>
-    
-    <label>面談方法</label>
-    <select id="inputMethod" onchange="updatePreview()">
-      <option value="Google Meet">Google Meet</option>
-      <option value="Zoom">Zoom</option>
-      <option value="電話">電話</option>
-      <option value="メール">メール</option>
-    </select>
-
-    <div class="btn-area">
-      <button class="btn-copy btn-blue" onclick="copyFull()">全文コピー (送信用)</button>
-      <button class="btn-copy btn-dark" onclick="copyDateOnly()">日時だけコピー</button>
+    <label>日付（カレンダー）</label>
+    <div class="dateWrap">
+      <input type="date" id="date">
     </div>
 
-    <label>プレビュー (自動更新)</label>
-    <textarea id="previewBox" rows="10" readonly></textarea>
+    <label>開始時間（10〜17時）</label>
+    <select id="time"></select>
+
+    <label>面談方法</label>
+    <select id="method">
+      <option>Google Meet</option>
+      <option>電話</option>
+      <option>LINE</option>
+      <option>メール</option>
+    </select>
+
+    <div class="btnRow">
+      <button id="copyAllBtn">全文コピー（送信用）</button>
+      <button class="secondary" id="copyDateBtn">日時だけコピー</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="mini">下のプレビューは自動更新されます（そのまま貼り付けOK）</div>
+    <textarea id="preview" readonly></textarea>
   </div>
 
-</div>
-
 <script>
-  // ★Apps ScriptのURL（変更なし）
-  const API_URL = "https://script.google.com/macros/s/AKfycbzUynvjJBAh2vCS_umO_I5_b4EsN5l6KnApahCpoY2EM9zGhrJAWrB2rUarBlSPzZoK/exec";
-  
-  let allData = [];
+(() => {
+  // --- 1. 頂いたツールのロジック（そのまま） ---
+  const week = ["日","月","火","水","木","金","土"];
+  const LINE = "──────────────";
 
-  // --- 1. データ読み込みとリスト表示 ---
-  fetch(API_URL)
-    .then(response => response.json())
-    .then(data => {
-      allData = data;
-      filterData('today'); // 初期表示は今日のみ
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('customerTable').style.display = 'table';
-      setTodayToTool(); // ツールの日付を今日にする
-    })
-    .catch(error => {
-      console.error(error);
-      document.getElementById('loading').innerText = "読み込みエラー";
-    });
+  const dateEl = document.getElementById("date");
+  const timeEl = document.getElementById("time");
+  const methodEl = document.getElementById("method");
+  const previewEl = document.getElementById("preview");
+  const statusEl = document.getElementById("status");
+  const copyAllBtn = document.getElementById("copyAllBtn");
+  const copyDateBtn = document.getElementById("copyDateBtn");
 
-  // リスト生成
-  function renderTable(data) {
-    const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = "";
+  // 時間生成（※リストの22時などの予約に対応するため、裏側では範囲を広げておきました）
+  function buildTimes() {
+    timeEl.innerHTML = "";
+    // データに合わせて 5時〜23時 まで生成しておきます（見た目は頂いたコードのデザインのまま）
+    for (let h = 5; h <= 23; h++) {
+      const opt = document.createElement("option");
+      opt.value = String(h);
+      opt.textContent = `${h}時～面談開始`;
+      // デフォルト選択を10時にしておく
+      if(h === 10) opt.selected = true;
+      timeEl.appendChild(opt);
+    }
+  }
 
-    if(data.length === 0) {
-      tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:20px;'>該当データなし</td></tr>";
+  function setToday() {
+    const t = new Date();
+    const yyyy = t.getFullYear();
+    const mm = String(t.getMonth()+1).padStart(2,"0");
+    const dd = String(t.getDate()).padStart(2,"0");
+    dateEl.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  function fmtDateParts() {
+    const v = dateEl.value;
+    if (!v) return null;
+    const d = new Date(v + "T00:00:00");
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const dow = week[d.getDay()];
+    const h = Number(timeEl.value || 10);
+    const method = methodEl.value;
+    return { y, m, day, dow, h, method };
+  }
+
+  function buildDateBox() {
+    const p = fmtDateParts();
+    if (!p) return "";
+    return `${LINE}
+面談予約日時
+${p.y}年${p.m}月${p.day}日（${p.dow}）
+${p.h}時～面談開始
+方法：${p.method}
+${LINE}`;
+  }
+
+  function buildFullMessage() {
+    const p = fmtDateParts();
+    if (!p) return "";
+    const dateBox = buildDateBox();
+    
+    // ★頂いた文面そのまま
+    return `フヤセルサポートです。
+ご連絡いただきありがとうございます。
+
+${dateBox}
+
+ご指定のお時間に
+空き枠がございましたので
+上記日程にて面談に
+入らせていただきます。
+
+面談の際には
+
+「フヤセルAIの準備」
+「聞きたいこと」
+「サポートを受けたいこと」
+
+こちらをご用意・ご準備のうえ
+ご参加いただけますと幸いです。
+
+その間でも
+ご質問などがございましたら
+
+しっかり丁寧にサポート対応を
+させていただきますので
+
+ご不明点がございます場合は
+お問い合わせくださいませ。
+
+何卒よろしくお願いいたします。`;
+  }
+
+  function renderPreview() {
+    const text = buildFullMessage();
+    previewEl.value = text || "日付を選ぶとプレビューが出ます";
+    statusEl.textContent = "";
+  }
+
+  async function copyText(text, okMsg) {
+    if (!text) {
+      statusEl.textContent = "日付を選んでください";
+      statusEl.style.color = "#b45309";
       return;
     }
+    try {
+      await navigator.clipboard.writeText(text);
+      statusEl.textContent = okMsg;
+      statusEl.style.color = "#0f766e";
+    } catch {
+      previewEl.focus();
+      previewEl.select();
+      document.execCommand("copy");
+      statusEl.textContent = okMsg + "（互換コピー）";
+      statusEl.style.color = "#0f766e";
+    }
+    setTimeout(() => statusEl.textContent = "", 1500);
+  }
 
+  dateEl.addEventListener("change", renderPreview);
+  timeEl.addEventListener("change", renderPreview);
+  methodEl.addEventListener("change", renderPreview);
+
+  copyAllBtn.addEventListener("click", () => copyText(buildFullMessage(), "全文をコピーしました"));
+  copyDateBtn.addEventListener("click", () => copyText(buildDateBox(), "日時だけコピーしました"));
+
+  buildTimes();
+  setToday();
+  renderPreview();
+
+
+  // --- 2. 予約リスト連携機能（新規追加） ---
+  const API_URL = "https://script.google.com/macros/s/AKfycbzUynvjJBAh2vCS_umO_I5_b4EsN5l6KnApahCpoY2EM9zGhrJAWrB2rUarBlSPzZoK/exec";
+  let allData = [];
+
+  // データ取得
+  fetch(API_URL)
+    .then(res => res.json())
+    .then(data => {
+      allData = data;
+      filterList('today'); // 初期表示
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('customerTable').style.display = 'table';
+    })
+    .catch(err => console.error(err));
+
+  // リスト描画
+  function renderList(data) {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = "";
+    if(data.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; color:#999;'>該当なし</td></tr>";
+      return;
+    }
     data.forEach(row => {
-        const dateStr = row[2];
-        const timeStr = row[3];
-        let name = row[12] || row[6] + " (LINE)";
-        const staff = row[9];
-        const status = row[5];
+      // 列: C=2(日), D=3(時), M=12(名), F=5(ステータス)
+      const dStr = row[2];
+      const tStr = row[3];
+      const name = row[12] || row[6] || "名称なし";
+      const status = row[5];
 
-        const tr = document.createElement('tr');
-        tr.className = "clickable";
+      const tr = document.createElement('tr');
+      tr.className = "clickable";
+      tr.innerHTML = `<td>${dStr}</td><td>${tStr}</td><td style="font-weight:bold">${name}</td><td>${status}</td>`;
+      
+      // ★クリック時の連携処理
+      tr.onclick = () => {
+        // 色変え
+        document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
+        tr.classList.add('selected');
+
+        // 日付入力 (YYYY.MM.DD -> YYYY-MM-DD)
+        if(dStr) {
+           const cleanDate = dStr.replace(/\./g, '-').split(' ')[0]; // (水)などを除去
+           dateEl.value = cleanDate;
+        }
+        // 時間入力 (10:00 -> 10)
+        if(tStr) {
+           const hour = parseInt(tStr);
+           if(hour) timeEl.value = String(hour);
+        }
+        // プレビュー更新
+        renderPreview();
         
-        // ★クリック時の動作：下のツールに入力する
-        tr.onclick = function() {
-            document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
-            tr.classList.add('selected');
-            fillTool(dateStr, timeStr);
-        };
-
-        tr.innerHTML = `<td>${dateStr}</td><td>${timeStr}</td><td style="font-weight:bold">${name}</td><td>${staff}</td><td>${status}</td>`;
-        tbody.appendChild(tr);
+        // スマホなら下へスクロール
+        if(window.innerWidth < 600) {
+            document.getElementById('toolBox').scrollIntoView({behavior: "smooth"});
+        }
+      };
+      tbody.appendChild(tr);
     });
   }
 
-  // フィルター機能
-  function filterData(type) {
-    document.getElementById('btnToday').classList.remove('active');
-    document.getElementById('btnAll').classList.remove('active');
+  // フィルター
+  function filterList(type) {
+    const btnToday = document.getElementById('btnToday');
+    const btnAll = document.getElementById('btnAll');
     
-    let filtered = [];
     const today = new Date();
     const y = today.getFullYear();
     const m = ('0' + (today.getMonth()+1)).slice(-2);
     const d = ('0' + today.getDate()).slice(-2);
-    const todayStr = `${y}.${m}.${d}`; // 2026.01.14
+    const todayStr = `${y}.${m}.${d}`; // スプシ形式に合わせる
 
-    if (type === 'today') {
-        document.getElementById('btnToday').classList.add('active');
-        filtered = allData.filter(row => row[2] && row[2].includes(todayStr));
+    if(type === 'today') {
+      btnToday.classList.add('active');
+      btnAll.classList.remove('active');
+      renderList(allData.filter(row => row[2] && row[2].includes(todayStr)));
     } else {
-        document.getElementById('btnAll').classList.add('active');
-        filtered = allData;
-    }
-    renderTable(filtered);
-  }
-
-  // 検索機能
-  function searchData() {
-    const keyword = document.getElementById('searchInput').value.toLowerCase();
-    renderTable(allData.filter(row => row.join(" ").toLowerCase().includes(keyword)));
-  }
-
-  // --- 2. ツール連携機能（修正済み） ---
-
-  // リストをクリックした時に、下のフォームにデータを入れる機能
-  function fillTool(dateStr, timeStr) {
-    // 日付を変換: 2026.01.14 (水) -> 2026年1月14日 (水) ※/でも.でも対応
-    let cleanDate = dateStr.replace(/\./g, '/');
-    // スラッシュを年月に変える簡易処理（簡易的に置換）
-    cleanDate = cleanDate.replace(/(\d{4})\/(\d{1,2})\/(\d{1,2})/, '$1年$2月$3日');
-    document.getElementById('inputDate').value = cleanDate;
-    
-    // 時間を変換: 10:00 -> 10時～面談開始 にマッチさせる
-    if(timeStr) {
-        // 先頭の数字（10など）を取り出す
-        const hour = parseInt(timeStr); 
-        if(hour) {
-            // ドロップダウンの値をセット
-            document.getElementById('inputTime').value = `${hour}時～面談開始`;
-        }
-    }
-    
-    updatePreview();
-    
-    // スマホの場合はスクロール
-    if(window.innerWidth < 600) {
-        document.getElementById('toolArea').scrollIntoView({behavior: "smooth"});
+      btnAll.classList.add('active');
+      btnToday.classList.remove('active');
+      renderList(allData);
     }
   }
+  
+  // イベントリスナー
+  document.getElementById('btnToday').onclick = () => filterList('today');
+  document.getElementById('btnAll').onclick = () => filterList('all');
+  document.getElementById('searchInput').onkeyup = (e) => {
+    const val = e.target.value.toLowerCase();
+    renderList(allData.filter(row => row.join(" ").toLowerCase().includes(val)));
+  };
 
-  function setTodayToTool() {
-    const d = new Date();
-    const week = ['日','月','火','水','木','金','土'];
-    const s = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 (${week[d.getDay()]})`;
-    document.getElementById('inputDate').value = s;
-    updatePreview();
-  }
-
-  // --- 3. コピー機能（要望通り復活） ---
-
-  function updatePreview() {
-    const date = document.getElementById('inputDate').value;
-    const time = document.getElementById('inputTime').value; // 「10時～面談開始」が入る
-    const method = document.getElementById('inputMethod').value;
-    
-    const text = `フヤセルサポートです。
-ご連絡いただきありがとうございます。
-
-__________________________
-
-面談予約日時
-${date}
-${time}
-方法：${method}
-__________________________
-
-ご指定のお時間に`;
-
-    document.getElementById('previewBox').value = text;
-  }
-
-  function copyFull() {
-    const text = document.getElementById('previewBox').value;
-    navigator.clipboard.writeText(text).then(() => {
-      alert("✅ 全文コピーしました！");
-    });
-  }
-
-  // ★修正：日時だけコピーをもっと「濃く」しました
-  function copyDateOnly() {
-    const date = document.getElementById('inputDate').value;
-    const time = document.getElementById('inputTime').value;
-    const method = document.getElementById('inputMethod').value;
-    
-    // 要望：「内容ももっと濃かったはず」
-    // → 面談予約日時のヘッダーと、方法まで含めたブロックをコピーします
-    const richText = `面談予約日時
-${date}
-${time}
-方法：${method}`;
-
-    navigator.clipboard.writeText(richText).then(() => {
-        alert("✅ 日時情報をコピーしました！\n\n" + richText);
-    });
-  }
-
-  // 入力が変わったらプレビュー更新
-  document.getElementById('inputDate').addEventListener('input', updatePreview);
-
+})();
 </script>
-
 </body>
 </html>
