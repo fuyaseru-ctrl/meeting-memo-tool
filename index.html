@@ -1,282 +1,168 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <title>面談メモ生成ツール</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>フヤセル顧客管理</title>
+<style>
+  /* 全体のデザイン */
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f5f7fb;
+    color: #333;
+    padding: 20px;
+    margin: 0;
+  }
 
-  <style>
-    * { box-sizing: border-box; }
+  /* カードデザイン */
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
-      background: #f5f7fb;
-      padding: 20px;
-    }
+  h1 {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #2c3e50;
+  }
 
-    .box {
-      max-width: 520px;
-      margin: auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 14px;
-      box-shadow: 0 8px 20px rgba(0,0,0,.08);
-    }
+  /* 読み込み中の表示 */
+  #loading {
+    text-align: center;
+    font-weight: bold;
+    color: #666;
+    padding: 20px;
+  }
 
-    h1 {
-      font-size: 18px;
-      margin: 0 0 16px;
-    }
+  /* テーブルデザイン */
+  .table-wrapper {
+    overflow-x: auto; /* スマホで横スクロール */
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    white-space: nowrap; /* スマホで折り返さない */
+  }
 
-    label {
-      display: block;
-      margin-top: 12px;
-      font-size: 13px;
-      color: #555;
-    }
+  th, td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+  }
 
-    input, select, button, textarea {
-      width: 100%;
-      padding: 10px;
-      margin-top: 6px;
-      font-size: 15px;
-      border-radius: 10px;
-      border: 1px solid #d7dbe6;
-      background: #fff;
-    }
+  th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #555;
+  }
 
-    /* ✅ date の「アイコンがはみ出る」対策 + 「枠内どこ押してもカレンダー」化 */
-    .dateWrap { position: relative; }
-    input[type="date"] {
-      padding-right: 12px;
-    }
-    /* WebKit系（Chrome/Edge/Safari）: カレンダーインジケータを入力欄全体に広げる */
-    input[type="date"]::-webkit-calendar-picker-indicator {
-      opacity: 0;              /* 見えなくする（タップは生きる） */
-      position: absolute;
-      right: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      cursor: pointer;
-    }
+  tr:hover {
+    background-color: #f1f5f9;
+  }
 
-    .btnRow {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 14px;
-    }
+  /* ステータスの色分け（例） */
+  .status-tag {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: bold;
+    background: #eee;
+    color: #555;
+  }
+  .status-予約確定 { background: #e3f2fd; color: #1565c0; } /* 青 */
+  .status-キャンセル { background: #ffebee; color: #c62828; } /* 赤 */
+  .status-来店済み { background: #e8f5e9; color: #2e7d32; } /* 緑 */
 
-    button {
-      border: none;
-      cursor: pointer;
-      font-weight: 800;
-      background: #2563eb;
-      color: #fff;
-    }
-
-    button.secondary {
-      background: #111827;
-    }
-
-    button:hover { opacity: .92; }
-
-    .mini {
-      margin-top: 10px;
-      font-size: 12px;
-      color: #667085;
-    }
-
-    textarea {
-      height: 260px;
-      margin-top: 12px;
-      font-size: 14px;
-      line-height: 1.6;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Noto Sans Mono", monospace;
-      white-space: pre-wrap;
-    }
-
-    .status {
-      margin-top: 8px;
-      font-size: 12px;
-      color: #0f766e;
-      min-height: 16px;
-    }
-  </style>
+</style>
 </head>
-
 <body>
-  <div class="box">
-    <h1>🗓 面談メモ生成ツール</h1>
 
-    <label>日付（カレンダー）</label>
-    <div class="dateWrap">
-      <input type="date" id="date">
-    </div>
+<div class="container">
+  <h1>📅 フヤセル予約リスト</h1>
+  
+  <div id="loading">データを読み込んでいます...<br>（初回は少し時間がかかります）</div>
 
-    <label>開始時間（10〜17時）</label>
-    <select id="time"></select>
-
-    <label>面談方法</label>
-    <select id="method">
-      <option>Google Meet</option>
-      <option>電話</option>
-      <option>LINE</option>
-      <option>メール</option>
-    </select>
-
-    <div class="btnRow">
-      <button id="copyAllBtn">全文コピー（送信用）</button>
-      <button class="secondary" id="copyDateBtn">日時だけコピー</button>
-    </div>
-
-    <div class="status" id="status"></div>
-
-    <div class="mini">下のプレビューは自動更新されます（そのまま貼り付けOK）</div>
-    <textarea id="preview" readonly></textarea>
+  <div class="table-wrapper">
+    <table id="customerTable" style="display:none;">
+      <thead>
+        <tr>
+          <th>来店日</th>
+          <th>時間</th>
+          <th>お名前</th>
+          <th>担当スタッフ</th>
+          <th>ステータス</th>
+          <th>コース</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        </tbody>
+    </table>
   </div>
+</div>
 
 <script>
-(() => {
-  const week = ["日","月","火","水","木","金","土"];
+  // ★あなたが作ったWebアプリのURL
+  const API_URL = "https://script.google.com/macros/s/AKfycbzUynvjJBAh2vCS_umO_I5_b4EsN5l6KnApahCpoY2EM9zGhrJAWrB2rUarBlSPzZoK/exec";
 
-  // 罫線は「文字数固定」＝端末依存しにくい
-  const LINE = "──────────────";
+  fetch(API_URL)
+    .then(response => response.json())
+    .then(data => {
+      const tbody = document.getElementById('tableBody');
+      const loading = document.getElementById('loading');
+      
+      // データを新しい順に並び替え（必要なら）
+      // data.reverse(); 
 
-  const dateEl = document.getElementById("date");
-  const timeEl = document.getElementById("time");
-  const methodEl = document.getElementById("method");
-  const previewEl = document.getElementById("preview");
-  const statusEl = document.getElementById("status");
-  const copyAllBtn = document.getElementById("copyAllBtn");
-  const copyDateBtn = document.getElementById("copyDateBtn");
+      data.forEach(row => {
+        // スプレッドシートの列番号（A=0, B=1, C=2...）
+        // 予約マスタの構造に合わせて取得
+        const date = row[2];      // C列: 予約(来店)日
+        const time = row[3];      // D列: 予約開始時間
+        const status = row[5];    // F列: ステータス
+        const staff = row[9];     // J列: スタッフ
+        
+        // 名前はM列(本名)を優先、なければG列(LINE名)を表示
+        let name = row[12]; 
+        if (!name || name === "") {
+            name = row[6] + " (LINE)";
+        }
+        
+        const course = row[8];    // I列: コース
 
-  // 時間生成（10〜17）
-  function buildTimes() {
-    timeEl.innerHTML = "";
-    for (let h = 10; h <= 17; h++) {
-      const opt = document.createElement("option");
-      opt.value = String(h);
-      opt.textContent = `${h}時～面談開始`;
-      timeEl.appendChild(opt);
-    }
-  }
+        // テーブルに行を追加
+        const tr = document.createElement('tr');
+        
+        // ステータスの色付け用クラスを作成
+        const statusClass = "status-" + (status ? status.split(" ")[0] : "その他");
 
-  // 今日をデフォルトセット（任意で便利）
-  function setToday() {
-    const t = new Date();
-    const yyyy = t.getFullYear();
-    const mm = String(t.getMonth()+1).padStart(2,"0");
-    const dd = String(t.getDate()).padStart(2,"0");
-    dateEl.value = `${yyyy}-${mm}-${dd}`;
-  }
+        tr.innerHTML = `
+          <td>${date}</td>
+          <td>${time}</td>
+          <td style="font-weight:bold;">${name}</td>
+          <td>${staff}</td>
+          <td><span class="status-tag ${statusClass}">${status}</span></td>
+          <td><small>${course}</small></td>
+        `;
+        tbody.appendChild(tr);
+      });
 
-  function fmtDateParts() {
-    const v = dateEl.value;
-    if (!v) return null;
-    const d = new Date(v + "T00:00:00");
-    const y = d.getFullYear();
-    const m = d.getMonth() + 1;
-    const day = d.getDate();
-    const dow = week[d.getDay()];
-    const h = Number(timeEl.value || 10);
-    const method = methodEl.value;
-
-    return { y, m, day, dow, h, method };
-  }
-
-  // ✅ 「日時BOX」（これを“日時のみコピー”で使う）
-  function buildDateBox() {
-    const p = fmtDateParts();
-    if (!p) return "";
-
-    return `${LINE}
-面談予約日時
-${p.y}年${p.m}月${p.day}日（${p.dow}）
-${p.h}時～面談開始
-方法：${p.method}
-${LINE}`;
-  }
-
-  // ✅ 「全文テンプレ」（必ず出る固定文 + 日時BOX挿入）
-  function buildFullMessage() {
-    const p = fmtDateParts();
-    if (!p) return "";
-
-    const dateBox = buildDateBox();
-
-    return `フヤセルサポートです。
-ご連絡いただきありがとうございます。
-
-${dateBox}
-
-ご指定のお時間に
-空き枠がございましたので
-上記日程にて面談に
-入らせていただきます。
-
-面談の際には
-
-「フヤセルAIの準備」
-「聞きたいこと」
-「サポートを受けたいこと」
-
-こちらをご用意・ご準備のうえ
-ご参加いただけますと幸いです。
-
-その間でも
-ご質問などがございましたら
-
-しっかり丁寧にサポート対応を
-させていただきますので
-
-ご不明点がございます場合は
-お問い合わせくださいませ。
-
-何卒よろしくお願いいたします。`;
-  }
-
-  function renderPreview() {
-    const text = buildFullMessage();
-    previewEl.value = text || "日付を選ぶとプレビューが出ます";
-    statusEl.textContent = "";
-  }
-
-  async function copyText(text, okMsg) {
-    if (!text) {
-      statusEl.textContent = "日付を選んでください";
-      statusEl.style.color = "#b45309";
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      statusEl.textContent = okMsg;
-      statusEl.style.color = "#0f766e";
-    } catch {
-      // フォールバック
-      previewEl.focus();
-      previewEl.select();
-      document.execCommand("copy");
-      statusEl.textContent = okMsg + "（互換コピー）";
-      statusEl.style.color = "#0f766e";
-    }
-    setTimeout(() => statusEl.textContent = "", 1500);
-  }
-
-  // Events
-  dateEl.addEventListener("change", renderPreview);
-  timeEl.addEventListener("change", renderPreview);
-  methodEl.addEventListener("change", renderPreview);
-
-  copyAllBtn.addEventListener("click", () => copyText(buildFullMessage(), "全文をコピーしました"));
-  copyDateBtn.addEventListener("click", () => copyText(buildDateBox(), "日時だけコピーしました"));
-
-  // init
-  buildTimes();
-  setToday();
-  renderPreview();
-})();
+      // 読み込み完了
+      loading.style.display = 'none';
+      document.getElementById('customerTable').style.display = 'table';
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      document.getElementById('loading').innerHTML = "データの読み込みに失敗しました。<br>URLや権限を確認してください。";
+    });
 </script>
+
 </body>
 </html>
