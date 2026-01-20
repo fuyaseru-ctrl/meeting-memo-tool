@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
-    /* --- 基本設定（頂いたコードベース） --- */
+    /* --- 基本設定（以前のツールそのまま） --- */
     * { box-sizing: border-box; }
 
     body {
@@ -15,7 +15,7 @@
       padding: 20px;
     }
 
-    /* --- 上部：予約リスト用スタイル --- */
+    /* --- 上部：予約リスト用スタイル（ここをボタン式に修正） --- */
     .list-container {
       max-width: 800px;
       margin: 0 auto 30px auto;
@@ -25,16 +25,16 @@
       box-shadow: 0 8px 20px rgba(0,0,0,.08);
     }
     
-    /* ボタン折り返し表示 */
+    /* ★修正ポイント：横スクロール(overflow)を廃止し、折り返し(wrap)にする */
     .filter-area {
       display: flex;
       gap: 8px;
       margin-bottom: 15px;
-      flex-wrap: wrap; 
+      flex-wrap: wrap; /* ここが重要！ボタンを並べる設定 */
     }
 
     .btn-filter {
-      padding: 10px 16px;
+      padding: 10px 14px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
@@ -43,9 +43,9 @@
       color: #555;
       font-size: 14px;
       transition: background 0.2s;
-      flex: 1 1 auto; 
+      flex: 1 1 auto; /* 幅を自動調整 */
       text-align: center;
-      min-width: 80px;
+      min-width: 80px; /* スマホで押しやすい最低幅 */
     }
     .btn-filter:hover { background: #e4e6eb; }
     .btn-filter.active { background: #2563eb; color: #fff; }
@@ -61,7 +61,7 @@
     tr.clickable:hover { background-color: #e3f2fd; }
     tr.selected { background-color: #bbdefb; border-left: 5px solid #2563eb; }
 
-    /* --- 下部：生成ツール用スタイル（保持） --- */
+    /* --- 下部：生成ツール用スタイル（完全に保持） --- */
     .box {
       max-width: 520px;
       margin: auto;
@@ -170,7 +170,7 @@
 
 <script>
 (() => {
-  // --- 1. ツールロジック（保持） ---
+  // --- 1. ツールロジック（完全に保持） ---
   const week = ["日","月","火","水","木","金","土"];
   const LINE = "──────────────";
 
@@ -303,6 +303,7 @@ ${dateBox}
   const API_URL = "https://script.google.com/macros/s/AKfycbzUynvjJBAh2vCS_umO_I5_b4EsN5l6KnApahCpoY2EM9zGhrJAWrB2rUarBlSPzZoK/exec";
   let allData = [];
 
+  // ボタン作成機能
   function initDateButtons() {
     const container = document.getElementById('dateButtonsContainer');
     container.innerHTML = "";
@@ -337,13 +338,13 @@ ${dateBox}
         container.appendChild(btn);
     }
 
+    // 全て表示ボタン
     const btnAll = document.createElement("button");
     btnAll.className = "btn-filter";
     btnAll.textContent = "全て表示";
     btnAll.onclick = () => {
         document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
         btnAll.classList.add("active");
-        // 全て表示の時は全データ（過去も含む）を表示
         renderList(sortDataByTime(allData));
     };
     container.appendChild(btnAll);
@@ -359,14 +360,14 @@ ${dateBox}
       const y = today.getFullYear();
       const m = ('0' + (today.getMonth()+1)).slice(-2);
       const d = ('0' + today.getDate()).slice(-2);
-      filterListByDate(`${y}.${m}.${d}`); // 最初の表示
+      filterListByDate(`${y}.${m}.${d}`);
 
       document.getElementById('loading').style.display = 'none';
       document.getElementById('customerTable').style.display = 'table';
     })
     .catch(err => console.error(err));
 
-  // 時間昇順ソート関数
+  // ★時間昇順ソート関数
   function sortDataByTime(dataList) {
     return dataList.sort((a, b) => {
         const timeA = a[3] || "99:99"; 
@@ -382,23 +383,21 @@ ${dateBox}
     const cleanDate = dateStr.replace(/\./g, '/').split(' ')[0];
     const targetDate = new Date(cleanDate + ' ' + timeStr);
     
-    // 2時間足す
+    // 2時間足して、現在時刻と比較
     targetDate.setHours(targetDate.getHours() + 2);
-    
-    // 現在時刻より前なら「経過済み」
     return new Date() > targetDate;
   }
 
+  // リストの絞り込み
   function filterListByDate(targetDateStr) {
     // 1. 日付で絞り込み
     let filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
 
-    // 2. ★ここで「2時間経過」を除外（日付ボタンの時だけ適用）
+    // 2. 「2時間経過」を除外（日付ボタンの時だけ適用）
     filtered = filtered.filter(row => {
         const dStr = row[2];
         const tStr = row[3];
-        // 経過していたら false (表示しない)
-        if (isExpired(dStr, tStr)) return false;
+        if (isExpired(dStr, tStr)) return false; // 2時間すぎてたら表示しない
         return true;
     });
 
@@ -411,7 +410,7 @@ ${dateBox}
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = "";
     if(data.length === 0) {
-      tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; color:#999; padding:20px;'>予約なし</td></tr>";
+      tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; color:#999; padding:20px;'>該当する予約なし</td></tr>";
       return;
     }
     data.forEach(row => {
@@ -424,6 +423,7 @@ ${dateBox}
       tr.className = "clickable";
       tr.innerHTML = `<td>${dStr}</td><td>${tStr}</td><td style="font-weight:bold">${name}</td><td>${status}</td>`;
       
+      // クリック連携
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
@@ -445,11 +445,10 @@ ${dateBox}
     });
   }
   
-  // 検索時は全データから検索（過去ログも見れるように時間はフィルタしない）
+  // 検索機能
   document.getElementById('searchInput').onkeyup = (e) => {
     document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
     const val = e.target.value.toLowerCase();
-    // 検索でも時間順には並べる
     const filtered = allData.filter(row => row.join(" ").toLowerCase().includes(val));
     renderList(sortDataByTime(filtered));
   };
