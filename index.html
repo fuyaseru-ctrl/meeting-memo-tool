@@ -25,7 +25,7 @@
       box-shadow: 0 8px 20px rgba(0,0,0,.08);
     }
 
-    /* ▼▼▼ カレンダー用スタイル（新規追加） ▼▼▼ */
+    /* ▼▼▼ カレンダー用スタイル（色分け追加） ▼▼▼ */
     .calendar-header {
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 15px; font-weight: bold; color: #333; font-size: 1.1em;
@@ -38,44 +38,53 @@
 
     .calendar-grid {
       display: grid;
-      grid-template-columns: repeat(7, 1fr); /* 7曜日の列 */
+      grid-template-columns: repeat(7, 1fr);
       gap: 5px;
       margin-bottom: 15px;
     }
     .cal-cell {
-      aspect-ratio: 1; /* 正方形にする */
+      aspect-ratio: 1;
       display: flex; flex-direction: column; justify-content: center; align-items: center;
       border-radius: 8px; cursor: pointer; font-size: 14px; color: #333;
       position: relative;
       background: #fff;
+      border: 1px solid transparent;
     }
-    .cal-cell:hover { background: #f5f7fb; }
+    .cal-cell:hover { filter: brightness(0.95); }
     
-    /* ヘッダー（曜日） */
-    .cal-head { font-size: 12px; color: #888; font-weight: normal; cursor: default; }
-    .cal-head:hover { background: #fff; }
+    /* ★追加：土日祝の色設定 */
+    .cal-sat { background-color: #eff6ff; color: #1e40af; } /* 薄い青 */
+    .cal-sun { background-color: #fef2f2; color: #991b1b; } /* 薄い赤 */
     
-    /* 今日の日付 */
-    .cal-today { color: #2563eb; font-weight: bold; border: 1px solid #2563eb; }
+    .cal-head { font-size: 12px; color: #888; font-weight: normal; cursor: default; background:none !important;}
     
-    /* 選択中の日付 */
-    .cal-selected { background-color: #2563eb !important; color: #fff !important; }
+    /* 今日の枠線 */
+    .cal-today { border: 2px solid #2563eb; font-weight: bold; }
     
-    /* 予約がある日のマーク */
+    /* 選択中の色（最優先） */
+    .cal-selected { background-color: #2563eb !important; color: #fff !important; border-color: #2563eb; }
+    
+    /* 予約マーク */
     .cal-has-event::after {
       content: ""; position: absolute; bottom: 4px;
-      width: 5px; height: 5px; border-radius: 50%; background-color: #ef4444; /* 赤い点 */
+      width: 5px; height: 5px; border-radius: 50%; background-color: #ef4444;
     }
-    /* 選択中は点を白く */
     .cal-selected.cal-has-event::after { background-color: #fff; }
 
-    /* 全て表示ボタンなど */
+    /* コントロールエリア */
     .controls-area { display: flex; gap: 10px; margin-bottom: 10px; }
+    
     .btn-sub {
       padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;
       background: #fff; color: #555; font-size: 13px; cursor: pointer;
     }
-    .btn-sub:hover { background: #f9fafb; }
+    
+    /* ★変更：「今日に戻る」ボタンを薄い緑に */
+    #btnTodayReset {
+      background-color: #dcfce7; color: #14532d; border: 1px solid #86efac; font-weight: bold;
+    }
+    #btnTodayReset:hover { background-color: #bbf7d0; }
+
     /* ▲▲▲ カレンダー終了 ▲▲▲ */
 
     .search-area { margin-bottom: 10px; }
@@ -85,9 +94,21 @@
     table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 13px; }
     th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
     th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 1; }
+    
     tr.clickable { cursor: pointer; transition: background 0.1s; }
     tr.clickable:hover { background-color: #e3f2fd; }
     tr.selected { background-color: #bbdefb; border-left: 5px solid #2563eb; }
+
+    /* ★追加：リストの先頭（次の人）を強調する黄色 */
+    tr.highlight-next {
+      background-color: #fef9c3 !important; /* 薄い黄色 */
+      border-left: 5px solid #eab308;
+    }
+    /* 選択された時は青が勝つように調整 */
+    tr.highlight-next.selected {
+      background-color: #bbdefb !important;
+      border-left: 5px solid #2563eb;
+    }
 
     /* --- 下部：生成ツール用スタイル（保持） --- */
     .box {
@@ -146,8 +167,7 @@
         <span id="calendarTitle">2026年 1月</span>
         <button class="calendar-nav-btn" id="nextMonthBtn">＞</button>
     </div>
-    <div class="calendar-grid" id="calendarGrid">
-        </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
     
     <div class="controls-area">
         <button class="btn-sub" id="btnTodayReset">今日に戻る</button>
@@ -338,29 +358,40 @@ ${dateBox}
   renderPreview();
 
 
-  // --- 2. 予約リスト連携機能（カレンダー版） ---
+  // --- 2. 予約リスト連携機能 ---
   const API_URL = "https://script.google.com/macros/s/AKfycbzUynvjJBAh2vCS_umO_I5_b4EsN5l6KnApahCpoY2EM9zGhrJAWrB2rUarBlSPzZoK/exec";
   let allData = [];
-  
-  // カレンダー管理用変数
-  let calDate = new Date(); // 表示中の月
+  let calDate = new Date(); 
+  let currentSelectedDateStr = ""; // 現在選択中の日付(YYYY.MM.DD)
 
-  // ★ヘルパー：安全な日付文字列変換 (YYYY.MM.DD -> YYYY-MM-DD)
   function safeDateStr(str) {
     if(!str) return "";
     const match = str.match(/(\d{4})[\.\/\-](\d{1,2})[\.\/\-](\d{1,2})/);
-    if(match) {
-        return `${match[1]}-${match[2]}-${match[3]}`; 
-    }
+    if(match) return `${match[1]}-${match[2]}-${match[3]}`; 
     return "";
   }
 
-  // ★カレンダー描画ロジック
+  // ★祝日リスト (2025-2026年 簡易版)
+  // 必要に応じて追加してください
+  const holidays = [
+    "2025-01-01","2025-01-13","2025-02-11","2025-02-23","2025-02-24","2025-03-20","2025-04-29",
+    "2025-05-03","2025-05-04","2025-05-05","2025-05-06","2025-07-21","2025-08-11","2025-09-15",
+    "2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24",
+    "2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-21","2026-04-29",
+    "2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11","2026-09-21",
+    "2026-09-23","2026-10-12","2026-11-03","2026-11-23"
+  ];
+
+  function isHoliday(y, m, d) {
+    const s = `${y}-${('0'+m).slice(-2)}-${('0'+d).slice(-2)}`;
+    return holidays.includes(s);
+  }
+
+  // カレンダー描画
   function renderCalendar() {
     const grid = document.getElementById('calendarGrid');
     grid.innerHTML = "";
 
-    // ヘッダー（曜日）
     const weekNames = ["日","月","火","水","木","金","土"];
     weekNames.forEach(w => {
         const div = document.createElement('div');
@@ -371,21 +402,17 @@ ${dateBox}
         grid.appendChild(div);
     });
 
-    // カレンダーの計算
     const year = calDate.getFullYear();
-    const month = calDate.getMonth(); // 0-11
-    
-    // タイトル更新
+    const month = calDate.getMonth();
     document.getElementById('calendarTitle').textContent = `${year}年 ${month+1}月`;
 
-    // 月の最初の日、最後の日
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0); // 翌月の0日目=今月の末日
+    const lastDay = new Date(year, month + 1, 0);
     
-    // 空白セル（1日が何曜日かによって埋める）
+    // 空白埋め
     for(let i=0; i<firstDay.getDay(); i++) {
         const div = document.createElement('div');
-        div.className = "cal-cell"; // 空っぽ
+        div.className = "cal-cell";
         grid.appendChild(div);
     }
 
@@ -395,30 +422,43 @@ ${dateBox}
         div.className = "cal-cell";
         div.textContent = d;
         
-        // 検索用日付文字列 YYYY.MM.DD (0埋め)
         const mm = ('0'+(month+1)).slice(-2);
         const dd = ('0'+d).slice(-2);
-        const targetStr = `${year}.${mm}.${dd}`; // データ形式に合わせる
+        const targetStr = `${year}.${mm}.${dd}`;
 
-        // 今日かどうか
+        // ★色分けロジック
+        const checkDate = new Date(year, month, d);
+        const dayOfWeek = checkDate.getDay();
+        
+        // 土曜
+        if(dayOfWeek === 6) {
+            div.classList.add("cal-sat");
+        }
+        // 日曜 または 祝日
+        else if(dayOfWeek === 0 || isHoliday(year, month+1, d)) {
+            div.classList.add("cal-sun");
+        }
+
+        // 今日
         const today = new Date();
         if(year===today.getFullYear() && month===today.getMonth() && d===today.getDate()) {
             div.classList.add("cal-today");
         }
 
-        // 予約があるかチェック（赤い点を付ける）
+        // 予約あり
         const hasEvent = allData.some(row => row[2] && row[2].includes(targetStr));
         if(hasEvent) {
             div.classList.add("cal-has-event");
         }
 
-        // クリックイベント
+        // 選択状態
+        if(targetStr === currentSelectedDateStr) {
+            div.classList.add("cal-selected");
+        }
+
         div.onclick = () => {
-            // 選択状態の切り替え
-            document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('cal-selected'));
-            div.classList.add('cal-selected');
-            
-            // リストを絞り込み
+            currentSelectedDateStr = targetStr; // 選択日を更新
+            renderCalendar(); // 再描画して選択色をつける
             filterListByDate(targetStr);
         };
 
@@ -426,7 +466,6 @@ ${dateBox}
     }
   }
 
-  // 月移動ボタン
   document.getElementById('prevMonthBtn').onclick = () => {
     calDate.setMonth(calDate.getMonth() - 1);
     renderCalendar();
@@ -435,36 +474,42 @@ ${dateBox}
     calDate.setMonth(calDate.getMonth() + 1);
     renderCalendar();
   };
+  
   // 今日へ戻る
   document.getElementById('btnTodayReset').onclick = () => {
     calDate = new Date();
-    renderCalendar();
-    // 今日のリストを表示
     const y = calDate.getFullYear();
     const m = ('0'+(calDate.getMonth()+1)).slice(-2);
     const d = ('0'+calDate.getDate()).slice(-2);
-    filterListByDate(`${y}.${m}.${d}`);
+    const todayStr = `${y}.${m}.${d}`;
+    
+    currentSelectedDateStr = todayStr;
+    renderCalendar();
+    filterListByDate(todayStr);
   };
-  // 全て表示
+  
   document.getElementById('btnShowAll').onclick = () => {
-    document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('cal-selected'));
+    currentSelectedDateStr = "";
+    renderCalendar();
     renderList(sortDataByTime(allData));
   };
 
 
-  // --- データ取得開始 ---
   fetch(API_URL)
     .then(res => res.json())
     .then(data => {
       allData = data;
-      renderCalendar(); // カレンダー描画
       
-      // 初期表示：今日のリスト
+      // 初期表示：今日
       const today = new Date();
       const y = today.getFullYear();
       const m = ('0'+(today.getMonth()+1)).slice(-2);
       const d = ('0'+today.getDate()).slice(-2);
-      filterListByDate(`${y}.${m}.${d}`);
+      const todayStr = `${y}.${m}.${d}`;
+      
+      currentSelectedDateStr = todayStr;
+      renderCalendar();
+      filterListByDate(todayStr);
 
       document.getElementById('loading').style.display = 'none';
       document.getElementById('customerTable').style.display = 'table';
@@ -472,7 +517,6 @@ ${dateBox}
     .catch(err => console.error(err));
 
 
-  // ヘルパー：ソート
   function sortDataByTime(dataList) {
     return dataList.sort((a, b) => {
         const timeA = a[3] || "99:99"; 
@@ -481,7 +525,6 @@ ${dateBox}
     });
   }
 
-  // 2時間経過チェック
   function isExpired(dateStr, timeStr) {
     if(!timeStr) return false;
     const ymd = safeDateStr(dateStr); 
@@ -492,12 +535,9 @@ ${dateBox}
     return new Date() > targetDate;
   }
 
-  // フィルタリング実行
   function filterListByDate(targetDateStr) {
-    // targetDateStr: "2026.01.20"
     let filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
 
-    // 2時間経過チェック
     filtered = filtered.filter(row => {
         const dStr = row[2];
         const tStr = row[3];
@@ -506,18 +546,29 @@ ${dateBox}
     });
 
     const sorted = sortDataByTime(filtered);
-    renderList(sorted);
+    // ★ここがポイント：日付指定されている場合だけ「ハイライト」オプションをONにする
+    renderList(sorted, true); 
   }
 
-  // リスト描画
-  function renderList(data) {
+  function renderList(data, isFilteredByDate = false) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = "";
     if(data.length === 0) {
       tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; color:#999; padding:20px;'>予約なし</td></tr>";
       return;
     }
-    data.forEach(row => {
+    
+    // 今日の日付文字列
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = ('0'+(today.getMonth()+1)).slice(-2);
+    const d = ('0'+today.getDate()).slice(-2);
+    const todayStr = `${y}.${m}.${d}`;
+
+    // 「選択中の日が今日」かつ「日付で絞り込まれている」場合のみ、1行目をハイライト
+    const shouldHighlight = isFilteredByDate && (currentSelectedDateStr === todayStr);
+
+    data.forEach((row, index) => {
       const dStr = row[2];
       const tStr = row[3];
       const name = row[12] || row[6] || "名称なし";
@@ -525,15 +576,20 @@ ${dateBox}
 
       const tr = document.createElement('tr');
       tr.className = "clickable";
+      
+      // ★1行目だけ黄色にする処理
+      if(index === 0 && shouldHighlight) {
+          tr.classList.add("highlight-next");
+      }
+
       tr.innerHTML = `<td>${dStr}</td><td>${tStr}</td><td style="font-weight:bold">${name}</td><td>${status}</td>`;
       
-      // クリック連携（日付変換修正済み）
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
 
         if(dStr) {
-           const cleanDate = safeDateStr(dStr); // 2026-01-20
+           const cleanDate = safeDateStr(dStr);
            if(cleanDate) dateEl.value = cleanDate;
         }
         if(tStr) {
@@ -549,10 +605,9 @@ ${dateBox}
     });
   }
   
-  // 検索
   document.getElementById('searchInput').onkeyup = (e) => {
-    // 検索時はカレンダー選択を解除
-    document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('cal-selected'));
+    currentSelectedDateStr = "";
+    renderCalendar(); // 選択解除
     const val = e.target.value.toLowerCase();
     const filtered = allData.filter(row => row.join(" ").toLowerCase().includes(val));
     renderList(sortDataByTime(filtered));
