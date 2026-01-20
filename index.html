@@ -25,31 +25,28 @@
       box-shadow: 0 8px 20px rgba(0,0,0,.08);
     }
     
-    /* ボタンエリアを横スクロール可能に */
+    /* ★修正：横スクロールをやめて、折り返し表示（全部見えるように） */
     .filter-area {
       display: flex;
       gap: 8px;
       margin-bottom: 15px;
-      overflow-x: auto; /* 横スクロール */
-      padding-bottom: 5px; /* スクロールバーのスペース */
-      white-space: nowrap;
-      -webkit-overflow-scrolling: touch; /* スマホで滑らかに */
+      flex-wrap: wrap; /* ここで折り返し指定 */
     }
-    /* スクロールバーを目立たなくする */
-    .filter-area::-webkit-scrollbar { height: 4px; }
-    .filter-area::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
 
     .btn-filter {
-      padding: 8px 14px;
+      padding: 10px 16px; /* ボタンを少し大きく押しやすく */
       border: none;
-      border-radius: 20px; /* 丸っこく */
+      border-radius: 8px;
       cursor: pointer;
       font-weight: bold;
       background: #f0f2f5;
       color: #555;
-      font-size: 13px;
-      flex-shrink: 0; /* 縮まないように */
+      font-size: 14px;
       transition: background 0.2s;
+      /* スマホでも押しやすいサイズ感に */
+      flex: 1 1 auto; 
+      text-align: center;
+      min-width: 80px;
     }
     .btn-filter:hover { background: #e4e6eb; }
     .btn-filter.active { background: #2563eb; color: #fff; }
@@ -57,9 +54,9 @@
     .search-area { margin-bottom: 10px; }
     .search-area input { margin-top: 0; }
     
-    .table-wrapper { max-height: 250px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
+    .table-wrapper { max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
     table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 13px; }
-    th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+    th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
     th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 1; }
     tr.clickable { cursor: pointer; transition: background 0.1s; }
     tr.clickable:hover { background-color: #e3f2fd; }
@@ -117,8 +114,7 @@
   <div class="list-container">
     <h2>📅 予約リストから選択</h2>
     
-    <div class="filter-area" id="dateButtonsContainer">
-      </div>
+    <div class="filter-area" id="dateButtonsContainer"></div>
 
     <div class="search-area">
       <input type="text" id="searchInput" placeholder="名前で検索...">
@@ -304,71 +300,63 @@ ${dateBox}
   renderPreview();
 
 
-  // --- 2. 予約リスト連携機能（アップデート版） ---
+  // --- 2. 予約リスト連携機能 ---
   const API_URL = "https://script.google.com/macros/s/AKfycbzUynvjJBAh2vCS_umO_I5_b4EsN5l6KnApahCpoY2EM9zGhrJAWrB2rUarBlSPzZoK/exec";
   let allData = [];
 
-  // ▼ 新機能：日付ボタンを生成する関数
   function initDateButtons() {
     const container = document.getElementById('dateButtonsContainer');
-    container.innerHTML = ""; // クリア
+    container.innerHTML = "";
 
-    // 0日後(今日) 〜 6日後 までループ
+    // 0日後(今日) 〜 6日後 まで
     for(let i=0; i<=6; i++) {
         const d = new Date();
         d.setDate(d.getDate() + i);
         
-        // ボタンのラベル作成
         let label = "";
         if(i === 0) label = "今日";
         else if(i === 1) label = "明日";
         else if(i === 2) label = "明後日";
         else label = `${i}日後`;
         
-        // 日付文字列作成 (検索用: YYYY.MM.DD)
         const y = d.getFullYear();
         const m = ('0' + (d.getMonth()+1)).slice(-2);
         const day = ('0' + d.getDate()).slice(-2);
         const dateStr = `${y}.${m}.${day}`;
 
-        // ボタン作成
         const btn = document.createElement("button");
         btn.className = "btn-filter";
-        btn.textContent = `${label} (${m}/${day})`; // 例: 明日 (01/15)
-        if(i === 0) btn.classList.add("active"); // 最初は今日を選択
+        btn.textContent = `${label} (${m}/${day})`;
+        if(i === 0) btn.classList.add("active");
         
-        // クリックイベント
         btn.onclick = () => {
-            // 全ボタンのactiveを外す
             document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
-            // フィルター実行
             filterListByDate(dateStr);
         };
         
         container.appendChild(btn);
     }
 
-    // 最後に「全て」ボタンを追加
     const btnAll = document.createElement("button");
     btnAll.className = "btn-filter";
     btnAll.textContent = "全て表示";
     btnAll.onclick = () => {
         document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
         btnAll.classList.add("active");
-        renderList(allData);
+        
+        // 全ても時間順にソートして表示
+        renderList(sortDataByTime(allData));
     };
     container.appendChild(btnAll);
   }
 
-  // データ取得
   fetch(API_URL)
     .then(res => res.json())
     .then(data => {
       allData = data;
-      initDateButtons(); // ボタン生成
+      initDateButtons();
       
-      // 最初は「今日」でフィルター
       const today = new Date();
       const y = today.getFullYear();
       const m = ('0' + (today.getMonth()+1)).slice(-2);
@@ -380,14 +368,23 @@ ${dateBox}
     })
     .catch(err => console.error(err));
 
-  // 日付文字列でフィルターする関数
-  function filterListByDate(targetDateStr) {
-    // targetDateStr: "2026.01.14" など
-    const filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
-    renderList(filtered);
+  // ★ 時間で並び替える関数を追加
+  function sortDataByTime(dataList) {
+    return dataList.sort((a, b) => {
+        const timeA = a[3] || "99:99"; // 時間がない場合は後ろへ
+        const timeB = b[3] || "99:99";
+        // 文字列として比較 (例: "10:00" < "11:00")
+        return timeA.localeCompare(timeB);
+    });
   }
 
-  // リスト描画
+  function filterListByDate(targetDateStr) {
+    const filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
+    // ★ ここでソートを実行
+    const sorted = sortDataByTime(filtered);
+    renderList(sorted);
+  }
+
   function renderList(data) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = "";
@@ -426,12 +423,11 @@ ${dateBox}
     });
   }
   
-  // 名前検索機能
   document.getElementById('searchInput').onkeyup = (e) => {
-    // 検索時はボタンのactiveを解除したほうが自然
     document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
     const val = e.target.value.toLowerCase();
-    renderList(allData.filter(row => row.join(" ").toLowerCase().includes(val)));
+    const filtered = allData.filter(row => row.join(" ").toLowerCase().includes(val));
+    renderList(sortDataByTime(filtered)); // 検索結果も時間順に
   };
 
 })();
