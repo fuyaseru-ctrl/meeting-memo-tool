@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
-    /* --- 基本設定（以前のツールそのまま） --- */
+    /* --- 基本設定（保持） --- */
     * { box-sizing: border-box; }
 
     body {
@@ -15,7 +15,7 @@
       padding: 20px;
     }
 
-    /* --- 上部：予約リスト用スタイル（ここをボタン式に修正） --- */
+    /* --- 上部：予約リスト用スタイル --- */
     .list-container {
       max-width: 800px;
       margin: 0 auto 30px auto;
@@ -25,28 +25,34 @@
       box-shadow: 0 8px 20px rgba(0,0,0,.08);
     }
     
-    /* ★修正ポイント：横スクロール(overflow)を廃止し、折り返し(wrap)にする */
+    /* ★修正：ボタンを「程よいサイズ」で折り返すように調整 */
     .filter-area {
       display: flex;
       gap: 8px;
       margin-bottom: 15px;
-      flex-wrap: wrap; /* ここが重要！ボタンを並べる設定 */
+      flex-wrap: wrap; 
     }
 
     .btn-filter {
-      padding: 10px 14px;
+      padding: 10px 10px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
       font-weight: bold;
       background: #f0f2f5;
       color: #555;
-      font-size: 14px;
+      font-size: 13px;
       transition: background 0.2s;
-      flex: 1 1 auto; /* 幅を自動調整 */
+      /* スマホで縦長になりすぎないよう、幅を調整 */
+      width: calc(33% - 6px); /* 3列表示 */
+      min-width: 90px;
       text-align: center;
-      min-width: 80px; /* スマホで押しやすい最低幅 */
     }
+    /* 画面が小さい時は2列に */
+    @media (max-width: 500px) {
+      .btn-filter { width: calc(50% - 5px); }
+    }
+
     .btn-filter:hover { background: #e4e6eb; }
     .btn-filter.active { background: #2563eb; color: #fff; }
 
@@ -170,7 +176,7 @@
 
 <script>
 (() => {
-  // --- 1. ツールロジック（完全に保持） ---
+  // --- 1. ツールロジック（保持） ---
   const week = ["日","月","火","水","木","金","土"];
   const LINE = "──────────────";
 
@@ -299,16 +305,26 @@ ${dateBox}
   renderPreview();
 
 
-  // --- 2. 予約リスト連携機能 ---
+  // --- 2. 予約リスト連携機能（修正版） ---
   const API_URL = "https://script.google.com/macros/s/AKfycbzUynvjJBAh2vCS_umO_I5_b4EsN5l6KnApahCpoY2EM9zGhrJAWrB2rUarBlSPzZoK/exec";
   let allData = [];
 
-  // ボタン作成機能
+  // ★ヘルパー：安全な日付文字列変換 (YYYY.MM.DD -> YYYY-MM-DD)
+  function safeDateStr(str) {
+    if(!str) return "";
+    // 正規表現で数字の並び(YYYY, MM, DD)を強制的に抽出する
+    // 例: "2026.01.20 (火)" -> matches ["2026", "01", "20"]
+    const match = str.match(/(\d{4})[\.\/\-](\d{1,2})[\.\/\-](\d{1,2})/);
+    if(match) {
+        return `${match[1]}-${match[2]}-${match[3]}`; // "2026-01-20"
+    }
+    return "";
+  }
+
   function initDateButtons() {
     const container = document.getElementById('dateButtonsContainer');
     container.innerHTML = "";
 
-    // 0日後(今日) 〜 6日後 まで
     for(let i=0; i<=6; i++) {
         const d = new Date();
         d.setDate(d.getDate() + i);
@@ -322,7 +338,7 @@ ${dateBox}
         const y = d.getFullYear();
         const m = ('0' + (d.getMonth()+1)).slice(-2);
         const day = ('0' + d.getDate()).slice(-2);
-        const dateStr = `${y}.${m}.${day}`;
+        const dateStr = `${y}.${m}.${day}`; // 検索用(スプシに合わせる)
 
         const btn = document.createElement("button");
         btn.className = "btn-filter";
@@ -338,9 +354,9 @@ ${dateBox}
         container.appendChild(btn);
     }
 
-    // 全て表示ボタン
     const btnAll = document.createElement("button");
     btnAll.className = "btn-filter";
+    btnAll.style.width = "100%"; // 全て表示は大きく
     btnAll.textContent = "全て表示";
     btnAll.onclick = () => {
         document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
@@ -367,7 +383,6 @@ ${dateBox}
     })
     .catch(err => console.error(err));
 
-  // ★時間昇順ソート関数
   function sortDataByTime(dataList) {
     return dataList.sort((a, b) => {
         const timeA = a[3] || "99:99"; 
@@ -376,32 +391,40 @@ ${dateBox}
     });
   }
 
-  // ★「2時間経過」判定ロジック
+  // ★修正：「2時間経過」判定ロジック
   function isExpired(dateStr, timeStr) {
     if(!timeStr) return false;
-    // 日付変換: 2026.01.20 (火) -> 2026/01/20
-    const cleanDate = dateStr.replace(/\./g, '/').split(' ')[0];
-    const targetDate = new Date(cleanDate + ' ' + timeStr);
     
-    // 2時間足して、現在時刻と比較
+    // 1. 日付を正規化してDateオブジェクトを作る
+    const ymd = safeDateStr(dateStr); // "2026-01-20"
+    if(!ymd) return false;
+
+    // 2. 日時を結合してDate化 (例: "2026-01-20T14:00:00")
+    const targetDate = new Date(`${ymd}T${timeStr}:00`);
+    
+    // 3. Dateが無効なら除外しない
+    if(isNaN(targetDate.getTime())) return false;
+
+    // 4. 2時間足す
     targetDate.setHours(targetDate.getHours() + 2);
+    
+    // 5. 現在時刻と比較
     return new Date() > targetDate;
   }
 
-  // リストの絞り込み
   function filterListByDate(targetDateStr) {
-    // 1. 日付で絞り込み
+    // 日付文字列で検索（ここは部分一致でOK）
     let filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
 
-    // 2. 「2時間経過」を除外（日付ボタンの時だけ適用）
+    // ★2時間経過チェックを適用
     filtered = filtered.filter(row => {
         const dStr = row[2];
         const tStr = row[3];
-        if (isExpired(dStr, tStr)) return false; // 2時間すぎてたら表示しない
+        // 期限切れなら false (表示しない)
+        if (isExpired(dStr, tStr)) return false;
         return true;
     });
 
-    // 3. 時間順に並び替え
     const sorted = sortDataByTime(filtered);
     renderList(sorted);
   }
@@ -410,7 +433,7 @@ ${dateBox}
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = "";
     if(data.length === 0) {
-      tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; color:#999; padding:20px;'>該当する予約なし</td></tr>";
+      tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; color:#999; padding:20px;'>予約なし (終了分は非表示)</td></tr>";
       return;
     }
     data.forEach(row => {
@@ -423,19 +446,23 @@ ${dateBox}
       tr.className = "clickable";
       tr.innerHTML = `<td>${dStr}</td><td>${tStr}</td><td style="font-weight:bold">${name}</td><td>${status}</td>`;
       
-      // クリック連携
+      // ★修正：クリック連携
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
 
+        // 日付反映：正規化関数を通して確実に入れる
         if(dStr) {
-           const cleanDate = dStr.replace(/\./g, '-').split(' ')[0];
-           dateEl.value = cleanDate;
+           const cleanDate = safeDateStr(dStr); // "2026-01-20"
+           if(cleanDate) dateEl.value = cleanDate;
         }
+        
+        // 時間反映
         if(tStr) {
            const hour = parseInt(tStr);
            if(hour) timeEl.value = String(hour);
         }
+        
         renderPreview();
         if(window.innerWidth < 600) {
             document.getElementById('toolBox').scrollIntoView({behavior: "smooth"});
@@ -445,7 +472,6 @@ ${dateBox}
     });
   }
   
-  // 検索機能
   document.getElementById('searchInput').onkeyup = (e) => {
     document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
     const val = e.target.value.toLowerCase();
