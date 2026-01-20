@@ -25,16 +25,16 @@
       box-shadow: 0 8px 20px rgba(0,0,0,.08);
     }
     
-    /* ★修正：横スクロールをやめて、折り返し表示（全部見えるように） */
+    /* ボタン折り返し表示 */
     .filter-area {
       display: flex;
       gap: 8px;
       margin-bottom: 15px;
-      flex-wrap: wrap; /* ここで折り返し指定 */
+      flex-wrap: wrap; 
     }
 
     .btn-filter {
-      padding: 10px 16px; /* ボタンを少し大きく押しやすく */
+      padding: 10px 16px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
@@ -43,7 +43,6 @@
       color: #555;
       font-size: 14px;
       transition: background 0.2s;
-      /* スマホでも押しやすいサイズ感に */
       flex: 1 1 auto; 
       text-align: center;
       min-width: 80px;
@@ -344,8 +343,7 @@ ${dateBox}
     btnAll.onclick = () => {
         document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
         btnAll.classList.add("active");
-        
-        // 全ても時間順にソートして表示
+        // 全て表示の時は全データ（過去も含む）を表示
         renderList(sortDataByTime(allData));
     };
     container.appendChild(btnAll);
@@ -361,26 +359,50 @@ ${dateBox}
       const y = today.getFullYear();
       const m = ('0' + (today.getMonth()+1)).slice(-2);
       const d = ('0' + today.getDate()).slice(-2);
-      filterListByDate(`${y}.${m}.${d}`);
+      filterListByDate(`${y}.${m}.${d}`); // 最初の表示
 
       document.getElementById('loading').style.display = 'none';
       document.getElementById('customerTable').style.display = 'table';
     })
     .catch(err => console.error(err));
 
-  // ★ 時間で並び替える関数を追加
+  // 時間昇順ソート関数
   function sortDataByTime(dataList) {
     return dataList.sort((a, b) => {
-        const timeA = a[3] || "99:99"; // 時間がない場合は後ろへ
+        const timeA = a[3] || "99:99"; 
         const timeB = b[3] || "99:99";
-        // 文字列として比較 (例: "10:00" < "11:00")
         return timeA.localeCompare(timeB);
     });
   }
 
+  // ★「2時間経過」判定ロジック
+  function isExpired(dateStr, timeStr) {
+    if(!timeStr) return false;
+    // 日付変換: 2026.01.20 (火) -> 2026/01/20
+    const cleanDate = dateStr.replace(/\./g, '/').split(' ')[0];
+    const targetDate = new Date(cleanDate + ' ' + timeStr);
+    
+    // 2時間足す
+    targetDate.setHours(targetDate.getHours() + 2);
+    
+    // 現在時刻より前なら「経過済み」
+    return new Date() > targetDate;
+  }
+
   function filterListByDate(targetDateStr) {
-    const filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
-    // ★ ここでソートを実行
+    // 1. 日付で絞り込み
+    let filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
+
+    // 2. ★ここで「2時間経過」を除外（日付ボタンの時だけ適用）
+    filtered = filtered.filter(row => {
+        const dStr = row[2];
+        const tStr = row[3];
+        // 経過していたら false (表示しない)
+        if (isExpired(dStr, tStr)) return false;
+        return true;
+    });
+
+    // 3. 時間順に並び替え
     const sorted = sortDataByTime(filtered);
     renderList(sorted);
   }
@@ -423,11 +445,13 @@ ${dateBox}
     });
   }
   
+  // 検索時は全データから検索（過去ログも見れるように時間はフィルタしない）
   document.getElementById('searchInput').onkeyup = (e) => {
     document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
     const val = e.target.value.toLowerCase();
+    // 検索でも時間順には並べる
     const filtered = allData.filter(row => row.join(" ").toLowerCase().includes(val));
-    renderList(sortDataByTime(filtered)); // 検索結果も時間順に
+    renderList(sortDataByTime(filtered));
   };
 
 })();
