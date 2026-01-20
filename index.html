@@ -75,7 +75,6 @@
       background-color: #dcfce7; color: #14532d; border: 1px solid #86efac; font-weight: bold;
     }
     #btnTodayReset:hover { background-color: #bbf7d0; }
-
     /* ▲▲▲ カレンダー終了 ▲▲▲ */
 
     .search-area { margin-bottom: 10px; }
@@ -361,7 +360,6 @@ ${dateBox}
     return "";
   }
 
-  // 祝日リスト (2025-2026年 簡易版)
   const holidays = [
     "2025-01-01","2025-01-13","2025-02-11","2025-02-23","2025-02-24","2025-03-20","2025-04-29",
     "2025-05-03","2025-05-04","2025-05-05","2025-05-06","2025-07-21","2025-08-11","2025-09-15",
@@ -515,7 +513,6 @@ ${dateBox}
     });
 
     const sorted = sortDataByTime(filtered);
-    // 日付指定されている時だけハイライトON
     renderList(sorted, true); 
   }
 
@@ -535,12 +532,12 @@ ${dateBox}
 
     const shouldHighlight = isFilteredByDate && (currentSelectedDateStr === todayStr);
 
-    // ★修正：次にハイライトすべき行のインデックスを探す
-    let nextApptIndex = -1;
+    // ★修正：次にハイライトすべき「時間」を探す
+    let targetHighlightTime = null;
     if (shouldHighlight) {
         const now = new Date();
-        // 現在時刻より未来の最初の予約を探す
-        nextApptIndex = data.findIndex(row => {
+        // 現在時刻より未来の最初の予約を見つける
+        const nextAppt = data.find(row => {
             const tStr = row[3]; // 例: "17:00"
             if(!tStr) return false;
             
@@ -548,13 +545,15 @@ ${dateBox}
             const h = parseInt(parts[0]);
             const min = parseInt(parts[1] || 0);
             
-            // 予約の日時オブジェクトを作成（今日）
             const apptDate = new Date();
             apptDate.setHours(h, min, 0, 0);
             
-            // 今より未来ならOK
             return apptDate > now;
         });
+        
+        if(nextAppt) {
+            targetHighlightTime = nextAppt[3]; // その時間を保存 (例: "17:00")
+        }
     }
 
     data.forEach((row, index) => {
@@ -566,8 +565,8 @@ ${dateBox}
       const tr = document.createElement('tr');
       tr.className = "clickable";
       
-      // ★修正：計算した「次の予約」だけを黄色にする
-      if(shouldHighlight && index === nextApptIndex) {
+      // ★修正：その時間の人は全員光らせる
+      if(shouldHighlight && targetHighlightTime && tStr === targetHighlightTime) {
           tr.classList.add("highlight-next");
       }
 
