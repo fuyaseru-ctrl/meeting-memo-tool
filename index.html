@@ -4,148 +4,70 @@
   <meta charset="utf-8">
   <title>フヤセル予約管理＆生成ツール</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
   <style>
-    /* --- 基本設定（保持） --- */
+    /* --- 基本設定 --- */
     * { box-sizing: border-box; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
-      background: #f5f7fb;
-      padding: 20px;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif; background: #f5f7fb; padding: 20px; }
 
     /* --- 上部：予約リスト用スタイル --- */
-    .list-container {
-      max-width: 800px;
-      margin: 0 auto 30px auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 14px;
-      box-shadow: 0 8px 20px rgba(0,0,0,.08);
-    }
+    .list-container { max-width: 800px; margin: 0 auto 30px auto; background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); }
 
-    /* ▼▼▼ カレンダー用スタイル（保持） ▼▼▼ */
-    .calendar-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 15px; font-weight: bold; color: #333; font-size: 1.1em;
-    }
-    .calendar-nav-btn {
-      background: #f0f2f5; border: none; border-radius: 50%; width: 32px; height: 32px;
-      cursor: pointer; font-weight: bold; color: #555;
-    }
+    /* ▼▼▼ カレンダー用スタイル ▼▼▼ */
+    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; color: #333; font-size: 1.1em; }
+    .calendar-nav-btn { background: #f0f2f5; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-weight: bold; color: #555; }
     .calendar-nav-btn:hover { background: #e4e6eb; }
-
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
-      margin-bottom: 15px;
-    }
-    .cal-cell {
-      aspect-ratio: 1;
-      display: flex; flex-direction: column; justify-content: center; align-items: center;
-      border-radius: 8px; cursor: pointer; font-size: 14px; color: #333;
-      position: relative;
-      background: #fff;
-      border: 1px solid transparent;
-    }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 15px; }
+    .cal-cell { aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 8px; cursor: pointer; font-size: 14px; color: #333; position: relative; background: #fff; border: 1px solid transparent; }
     .cal-cell:hover { filter: brightness(0.95); }
-    
-    /* 色設定（保持） */
-    .cal-sat { background-color: #eff6ff; color: #1e40af; } /* 薄い青 */
-    .cal-sun { background-color: #fef2f2; color: #991b1b; } /* 薄い赤 */
-    
+    .cal-sat { background-color: #eff6ff; color: #1e40af; }
+    .cal-sun { background-color: #fef2f2; color: #991b1b; }
     .cal-head { font-size: 12px; color: #888; font-weight: normal; cursor: default; background:none !important;}
     .cal-today { border: 2px solid #2563eb; font-weight: bold; }
     .cal-selected { background-color: #2563eb !important; color: #fff !important; border-color: #2563eb; }
-    
-    .cal-has-event::after {
-      content: ""; position: absolute; bottom: 4px;
-      width: 5px; height: 5px; border-radius: 50%; background-color: #ef4444;
-    }
+    .cal-has-event::after { content: ""; position: absolute; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; background-color: #ef4444; }
     .cal-selected.cal-has-event::after { background-color: #fff; }
 
-    .controls-area { display: flex; gap: 10px; margin-bottom: 10px; }
-    .btn-sub {
-      padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;
-      background: #fff; color: #555; font-size: 13px; cursor: pointer;
-    }
-    #btnTodayReset {
-      background-color: #dcfce7; color: #14532d; border: 1px solid #86efac; font-weight: bold;
-    }
+    .controls-area { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .btn-sub { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; color: #555; font-size: 13px; cursor: pointer; }
+    #btnTodayReset { background-color: #dcfce7; color: #14532d; border: 1px solid #86efac; font-weight: bold; }
     #btnTodayReset:hover { background-color: #bbf7d0; }
-    /* ▲▲▲ カレンダー終了 ▲▲▲ */
+    
+    /* ★Meet発行ボタンのデザイン */
+    #btnGenerateMeet {
+        background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; font-weight: bold;
+        display: flex; align-items: center; gap: 4px;
+    }
+    #btnGenerateMeet:hover { background-color: #c7d2fe; }
 
     .search-area { margin-bottom: 10px; }
     .search-area input { margin-top: 0; }
-    
     .table-wrapper { max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
     table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 13px; }
     th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
     th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 1; }
-    
     tr.clickable { cursor: pointer; transition: background 0.1s; }
     tr.clickable:hover { background-color: #e3f2fd; }
     tr.selected { background-color: #bbdefb; border-left: 5px solid #2563eb; }
+    tr.highlight-next { background-color: #fef9c3 !important; border-left: 5px solid #eab308; }
+    tr.highlight-next.selected { background-color: #bbdefb !important; border-left: 5px solid #2563eb; }
 
-    /* ★ハイライト（薄い黄色） */
-    tr.highlight-next {
-      background-color: #fef9c3 !important; /* 薄い黄色 */
-      border-left: 5px solid #eab308;
-    }
-    tr.highlight-next.selected {
-      background-color: #bbdefb !important;
-      border-left: 5px solid #2563eb;
-    }
-
-    /* --- 下部：生成ツール用スタイル（保持） --- */
-    .box {
-      max-width: 520px;
-      margin: auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 14px;
-      box-shadow: 0 8px 20px rgba(0,0,0,.08);
-    }
-
+    /* --- 下部：生成ツール用スタイル --- */
+    .box { max-width: 520px; margin: auto; background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); }
     h1 { font-size: 18px; margin: 0 0 16px; }
     h2 { font-size: 16px; margin: 0 0 10px; color: #555; border-bottom: 1px solid #eee; padding-bottom: 8px;}
-
     label { display: block; margin-top: 12px; font-size: 13px; color: #555; }
-
-    input, select, button, textarea {
-      width: 100%;
-      padding: 10px;
-      margin-top: 6px;
-      font-size: 15px;
-      border-radius: 10px;
-      border: 1px solid #d7dbe6;
-      background: #fff;
-    }
-
+    input, select, button, textarea { width: 100%; padding: 10px; margin-top: 6px; font-size: 15px; border-radius: 10px; border: 1px solid #d7dbe6; background: #fff; }
     .dateWrap { position: relative; }
     input[type="date"] { padding-right: 12px; }
-    input[type="date"]::-webkit-calendar-picker-indicator {
-      opacity: 0; position: absolute; right: 0; top: 0; width: 100%; height: 100%; cursor: pointer;
-    }
-
     .btnRow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
     button { border: none; cursor: pointer; font-weight: 800; background: #2563eb; color: #fff; }
     button.secondary { background: #111827; }
     button:hover { opacity: .92; }
     .mini { margin-top: 10px; font-size: 12px; color: #667085; }
-    
-    textarea {
-      height: 260px; margin-top: 12px; font-size: 14px; line-height: 1.6;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Noto Sans Mono", monospace;
-      white-space: pre-wrap;
-    }
+    textarea { height: 260px; margin-top: 12px; font-size: 14px; line-height: 1.6; font-family: monospace; white-space: pre-wrap; }
     .status { margin-top: 8px; font-size: 12px; color: #0f766e; min-height: 16px; }
-
   </style>
 </head>
-
 <body>
 
   <div class="list-container">
@@ -161,6 +83,7 @@
     <div class="controls-area">
         <button class="btn-sub" id="btnTodayReset">今日に戻る</button>
         <button class="btn-sub" id="btnShowAll">リストを全て表示</button>
+        <button class="btn-sub" id="btnGenerateMeet">⚡ Meetリンク一括発行</button>
     </div>
 
     <div class="search-area">
@@ -188,15 +111,10 @@
 
   <div class="box" id="toolBox">
     <h1>🗓 面談メモ生成ツール</h1>
-
     <label>日付（カレンダー）</label>
-    <div class="dateWrap">
-      <input type="date" id="date">
-    </div>
-
+    <div class="dateWrap"><input type="date" id="date"></div>
     <label>開始時間（10〜17時）</label>
     <select id="time"></select>
-
     <label>面談方法</label>
     <select id="method">
       <option>Google Meet</option>
@@ -204,21 +122,18 @@
       <option>LINE</option>
       <option>メール</option>
     </select>
-
     <div class="btnRow">
       <button id="copyAllBtn">全文コピー（送信用）</button>
       <button class="secondary" id="copyDateBtn">日時だけコピー</button>
     </div>
-
     <div class="status" id="status"></div>
-
     <div class="mini">下のプレビューは自動更新されます（そのまま貼り付けOK）</div>
     <textarea id="preview" readonly></textarea>
   </div>
 
 <script>
 (() => {
-  // --- 1. ツールロジック（保持） ---
+  // --- 1. ツールロジック ---
   const week = ["日","月","火","水","木","金","土"];
   const LINE = "──────────────";
 
@@ -277,7 +192,6 @@ ${LINE}`;
     const p = fmtDateParts();
     if (!p) return "";
     const dateBox = buildDateBox();
-    
     return `フヤセルサポートです。
 ご連絡いただきありがとうございます。
 
@@ -338,17 +252,18 @@ ${dateBox}
   dateEl.addEventListener("change", renderPreview);
   timeEl.addEventListener("change", renderPreview);
   methodEl.addEventListener("change", renderPreview);
-
   copyAllBtn.addEventListener("click", () => copyText(buildFullMessage(), "全文をコピーしました"));
   copyDateBtn.addEventListener("click", () => copyText(buildDateBox(), "日時だけコピーしました"));
-
   buildTimes();
   setToday();
   renderPreview();
 
 
   // --- 2. 予約リスト連携機能 ---
-  const API_URL = "https://script.google.com/macros/s/AKfycbzUynvjJBAh2vCS_umO_I5_b4EsN5l6KnApahCpoY2EM9zGhrJAWrB2rUarBlSPzZoK/exec";
+  
+  // ★★★ これがあなたの新しいAPIのURLです！ ★★★
+  const API_URL = "https://script.google.com/macros/s/AKfycbxd654xuOqmP7xbMh5_gW3t0NxlYHtLiXi0Xhn4ojz0MYtBf24qiTVwvBXG4seHDPnY/exec";
+  
   let allData = [];
   let calDate = new Date(); 
   let currentSelectedDateStr = "";
@@ -368,7 +283,6 @@ ${dateBox}
     "2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11","2026-09-21",
     "2026-09-23","2026-10-12","2026-11-03","2026-11-23"
   ];
-
   function isHoliday(y, m, d) {
     const s = `${y}-${('0'+m).slice(-2)}-${('0'+d).slice(-2)}`;
     return holidays.includes(s);
@@ -377,7 +291,6 @@ ${dateBox}
   function renderCalendar() {
     const grid = document.getElementById('calendarGrid');
     grid.innerHTML = "";
-
     const weekNames = ["日","月","火","水","木","金","土"];
     weekNames.forEach(w => {
         const div = document.createElement('div');
@@ -387,11 +300,9 @@ ${dateBox}
         if(w==="土") div.style.color = "#3b82f6";
         grid.appendChild(div);
     });
-
     const year = calDate.getFullYear();
     const month = calDate.getMonth();
     document.getElementById('calendarTitle').textContent = `${year}年 ${month+1}月`;
-
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     
@@ -400,30 +311,24 @@ ${dateBox}
         div.className = "cal-cell";
         grid.appendChild(div);
     }
-
     for(let d=1; d<=lastDay.getDate(); d++) {
         const div = document.createElement('div');
         div.className = "cal-cell";
         div.textContent = d;
-        
         const mm = ('0'+(month+1)).slice(-2);
         const dd = ('0'+d).slice(-2);
         const targetStr = `${year}.${mm}.${dd}`;
-
         const checkDate = new Date(year, month, d);
         const dayOfWeek = checkDate.getDay();
         
         if(dayOfWeek === 6) div.classList.add("cal-sat");
         else if(dayOfWeek === 0 || isHoliday(year, month+1, d)) div.classList.add("cal-sun");
-
         const today = new Date();
         if(year===today.getFullYear() && month===today.getMonth() && d===today.getDate()) {
             div.classList.add("cal-today");
         }
-
         const hasEvent = allData.some(row => row[2] && row[2].includes(targetStr));
         if(hasEvent) div.classList.add("cal-has-event");
-
         if(targetStr === currentSelectedDateStr) div.classList.add("cal-selected");
 
         div.onclick = () => {
@@ -431,20 +336,12 @@ ${dateBox}
             renderCalendar();
             filterListByDate(targetStr);
         };
-
         grid.appendChild(div);
     }
   }
 
-  document.getElementById('prevMonthBtn').onclick = () => {
-    calDate.setMonth(calDate.getMonth() - 1);
-    renderCalendar();
-  };
-  document.getElementById('nextMonthBtn').onclick = () => {
-    calDate.setMonth(calDate.getMonth() + 1);
-    renderCalendar();
-  };
-  
+  document.getElementById('prevMonthBtn').onclick = () => { calDate.setMonth(calDate.getMonth() - 1); renderCalendar(); };
+  document.getElementById('nextMonthBtn').onclick = () => { calDate.setMonth(calDate.getMonth() + 1); renderCalendar(); };
   document.getElementById('btnTodayReset').onclick = () => {
     calDate = new Date();
     const y = calDate.getFullYear();
@@ -455,34 +352,61 @@ ${dateBox}
     renderCalendar();
     filterListByDate(todayStr);
   };
-  
   document.getElementById('btnShowAll').onclick = () => {
     currentSelectedDateStr = "";
     renderCalendar();
     renderList(sortDataByTime(allData));
   };
 
+  // ★新機能：Meetリンク一括発行
+  document.getElementById('btnGenerateMeet').onclick = async () => {
+    if(!confirm("未発行の予約に対して、Google Meetリンクを一括発行しますか？\n（カレンダーにも登録されます）")) return;
+    
+    const btn = document.getElementById('btnGenerateMeet');
+    const originalText = btn.textContent;
+    btn.textContent = "発行中...";
+    btn.disabled = true;
 
-  fetch(API_URL)
-    .then(res => res.json())
-    .then(data => {
-      allData = data;
-      
-      const today = new Date();
-      const y = today.getFullYear();
-      const m = ('0'+(today.getMonth()+1)).slice(-2);
-      const d = ('0'+today.getDate()).slice(-2);
-      const todayStr = `${y}.${m}.${d}`;
-      
-      currentSelectedDateStr = todayStr;
-      renderCalendar();
-      filterListByDate(todayStr);
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "generateLinks" })
+        });
+        const result = await response.json();
+        
+        alert(result.message); // 結果を表示
+        
+        loadData(); // リロード
 
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('customerTable').style.display = 'table';
-    })
-    .catch(err => console.error(err));
+    } catch(e) {
+        alert("エラーが発生しました: " + e.message);
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+  };
 
+  function loadData() {
+    document.getElementById('loading').style.display = 'block';
+    fetch(API_URL)
+      .then(res => res.json())
+      .then(data => {
+        allData = data;
+        if (currentSelectedDateStr) {
+            filterListByDate(currentSelectedDateStr);
+        } else {
+            renderList(sortDataByTime(allData));
+        }
+        renderCalendar();
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('customerTable').style.display = 'table';
+      })
+      .catch(err => {
+          console.error(err);
+          document.getElementById('loading').textContent = "読み込みエラー";
+      });
+  }
+  loadData();
 
   function sortDataByTime(dataList) {
     return dataList.sort((a, b) => {
@@ -491,7 +415,6 @@ ${dateBox}
         return timeA.localeCompare(timeB);
     });
   }
-
   function isExpired(dateStr, timeStr) {
     if(!timeStr) return false;
     const ymd = safeDateStr(dateStr); 
@@ -501,17 +424,14 @@ ${dateBox}
     targetDate.setHours(targetDate.getHours() + 2);
     return new Date() > targetDate;
   }
-
   function filterListByDate(targetDateStr) {
     let filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
-
     filtered = filtered.filter(row => {
         const dStr = row[2];
         const tStr = row[3];
         if (isExpired(dStr, tStr)) return false; 
         return true;
     });
-
     const sorted = sortDataByTime(filtered);
     renderList(sorted, true); 
   }
@@ -529,53 +449,40 @@ ${dateBox}
     const m = ('0'+(today.getMonth()+1)).slice(-2);
     const d = ('0'+today.getDate()).slice(-2);
     const todayStr = `${y}.${m}.${d}`;
-
     const shouldHighlight = isFilteredByDate && (currentSelectedDateStr === todayStr);
 
-    // ★修正：次にハイライトすべき「時間」を探す
     let targetHighlightTime = null;
     if (shouldHighlight) {
         const now = new Date();
-        // 現在時刻より未来の最初の予約を見つける
         const nextAppt = data.find(row => {
-            const tStr = row[3]; // 例: "17:00"
+            const tStr = row[3]; 
             if(!tStr) return false;
-            
             const parts = tStr.split(":");
             const h = parseInt(parts[0]);
             const min = parseInt(parts[1] || 0);
-            
             const apptDate = new Date();
             apptDate.setHours(h, min, 0, 0);
-            
             return apptDate > now;
         });
-        
-        if(nextAppt) {
-            targetHighlightTime = nextAppt[3]; // その時間を保存 (例: "17:00")
-        }
+        if(nextAppt) { targetHighlightTime = nextAppt[3]; }
     }
 
-    data.forEach((row, index) => {
+    data.forEach((row) => {
       const dStr = row[2];
       const tStr = row[3];
       const name = row[12] || row[6] || "名称なし";
       const status = row[5];
-
       const tr = document.createElement('tr');
       tr.className = "clickable";
       
-      // ★修正：その時間の人は全員光らせる
       if(shouldHighlight && targetHighlightTime && tStr === targetHighlightTime) {
           tr.classList.add("highlight-next");
       }
-
       tr.innerHTML = `<td>${dStr}</td><td>${tStr}</td><td style="font-weight:bold">${name}</td><td>${status}</td>`;
       
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
-
         if(dStr) {
            const cleanDate = safeDateStr(dStr);
            if(cleanDate) dateEl.value = cleanDate;
