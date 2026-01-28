@@ -78,8 +78,8 @@
     button.add-btn { background: #10b981; }
     button.cancel-status-btn { background: #6b7280; color: #fff; margin-top: 10px; }
     
-    /* ★編集エリア用 */
-    .edit-status-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+    /* ★編集エリア用（下部に移動のためスタイル調整） */
+    .edit-status-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
     .edit-status-row button { width: auto; background: #0891b2; font-size: 13px; padding: 10px 16px;}
     
     textarea { height: 180px; margin-top: 12px; font-size: 14px; line-height: 1.6; font-family: monospace; white-space: pre-wrap; }
@@ -143,24 +143,6 @@
       <h1>🗓 面談メモ生成 & 操作</h1>
       <div id="selectedNameDisplay"></div>
 
-      <div class="edit-status-row">
-        <div style="flex:1">
-            <label style="margin-top:0">ステータス変更</label>
-            <select id="editStatus">
-                <option>予約確定</option>
-                <option>初回面談</option>
-                <option>１ヵ月面談</option>
-                <option>２ヵ月面談</option>
-                <option>３ヵ月面談</option>
-                <option>４ヵ月面談</option>
-                <option>５ヵ月面談</option>
-                <option>満期面談</option>
-                <option>キャンセル</option>
-            </select>
-        </div>
-        <button id="btnUpdateStatus">🔄 更新</button>
-      </div>
-
       <label>日付</label>
       <div class="dateWrap"><input type="date" id="date"></div>
       <label>開始時間</label>
@@ -184,6 +166,24 @@
           <button class="danger" id="btnDeleteSingle">🗑️ リンク削除</button>
       </div>
       <button class="cancel-status-btn" id="btnCancelStatus">🚫 キャンセル処理（リンクは保持）</button>
+
+      <div class="edit-status-row">
+        <div style="flex:1">
+            <label style="margin-top:0">ステータス変更</label>
+            <select id="editStatus">
+                <option>予約確定</option>
+                <option>初回面談</option>
+                <option>１ヵ月面談</option>
+                <option>２ヵ月面談</option>
+                <option>３ヵ月面談</option>
+                <option>４ヵ月面談</option>
+                <option>５ヵ月面談</option>
+                <option>満期面談</option>
+                <option>キャンセル</option>
+            </select>
+        </div>
+        <button id="btnUpdateStatus">🔄 更新</button>
+      </div>
     </div>
 
     <div class="box" id="addBox">
@@ -230,7 +230,7 @@
   const statusEl = document.getElementById("status");
   const nameDisplay = document.getElementById("selectedNameDisplay");
   
-  const editStatusEl = document.getElementById("editStatus"); // ★変更用
+  const editStatusEl = document.getElementById("editStatus"); 
 
   const addDateEl = document.getElementById("addDate");
   const addTimeEl = document.getElementById("addTime");
@@ -448,7 +448,6 @@
         selectedCustomerName = name;
         nameDisplay.textContent = `選択中: ${name}`;
         
-        // ★クリック時に現在のステータスをプルダウンにセット
         editStatusEl.value = status || "予約確定";
 
         renderPreview();
