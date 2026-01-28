@@ -138,8 +138,8 @@
 
 <script>
 (() => {
-  // ★重要：画像から読み取った、あなたの最新URLをセットしました！
-  const API_URL = "https://script.google.com/macros/s/AKfycbz3AX4cK2ViWserTlSrlBg66hiNrAxwP4xZFeWb5tFPegzfgxikb7yAH0jNXVlrezRp/exec";
+  // ★ここにあなたの正しいURLを埋め込みました
+  const API_URL = "https://script.google.com/macros/s/AKfycbz3AX4cK2ViWserTlSrlBg66hiNrAxwP4xZFeWb5tFPegzfGxikb7yAH0jNXVlrezRp/exec";
 
   let allData = [];
   let calDate = new Date(); 
@@ -249,7 +249,7 @@
         document.getElementById('customerTable').style.display = 'table';
     }).catch(err => {
         document.getElementById('loading').textContent = "読み込みエラー";
-        alert("データの読み込みに失敗しました。\nGASのデプロイが「新バージョン」で更新されているか確認してください。");
+        alert("データの読み込みに失敗しました。\nAPI URLが正しいか確認してください。");
     });
   }
 
@@ -285,6 +285,8 @@
     tbody.innerHTML = "";
     if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
     
+    const fragment = document.createDocumentFragment();
+    
     const today = new Date();
     const todayStr = `${today.getFullYear()}.${('0'+(today.getMonth()+1)).slice(-2)}.${('0'+today.getDate()).slice(-2)}`;
     const highlight = isFiltered && (currentSelectedDateStr === todayStr);
@@ -316,28 +318,32 @@
         renderPreview();
         if(window.innerWidth < 600) document.getElementById('toolBox').scrollIntoView({behavior:"smooth"});
       };
-      tbody.appendChild(tr);
+      fragment.appendChild(tr);
     });
+    tbody.appendChild(fragment);
   }
 
   // Util
   function safeDate(s) { const m=s.match(/(\d{4})[\.\/\-](\d{1,2})[\.\/\-](\d{1,2})/); return m?`${m[1]}-${m[2]}-${m[3]}`:""; }
   function isHoliday(y, m, d) { return ["2025-01-01","2025-01-13","2025-02-11","2025-02-23","2025-02-24","2025-03-20","2025-04-29","2025-05-03","2025-05-04","2025-05-05","2025-05-06","2025-07-21","2025-08-11","2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24","2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-21","2026-04-29","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11","2026-09-21","2026-09-23","2026-10-12","2026-11-03","2026-11-23"].includes(`${y}-${('0'+m).slice(-2)}-${('0'+d).slice(-2)}`); }
   
-  function sortDataByDateDesc(dataList) {
-    return dataList.sort((a, b) => {
-        const dA = (a[2] || "").trim(); const dB = (b[2] || "").trim();
-        if (dA !== dB) return dB.localeCompare(dA);
-        return parseTime(a[3]) - parseTime(b[3]);
-    });
+  function getNumericDate(str) {
+      if(!str) return 0;
+      const s = str.replace(/[^\d]/g, ""); 
+      return parseInt(s) || 0; 
   }
   function parseTime(tStr) {
       if (!tStr) return 9999;
       const parts = String(tStr).split(":");
-      const h = parseInt(parts[0], 10);
-      const m = parseInt(parts[1], 10) || 0;
-      if (isNaN(h)) return 9999;
-      return h * 60 + m;
+      return parseInt(parts[0]) * 60 + (parseInt(parts[1]) || 0);
+  }
+
+  function sortDataByDateDesc(dataList) {
+    return dataList.sort((a, b) => {
+        const dA = getNumericDate(a[2]); const dB = getNumericDate(b[2]);
+        if (dA !== dB) return dB - dA; 
+        return parseTime(a[3]) - parseTime(b[3]); 
+    });
   }
   function sortDataByTime(dataList) { return dataList.sort((a,b)=>parseTime(a[3]) - parseTime(b[3])); }
 
