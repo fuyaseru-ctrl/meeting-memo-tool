@@ -48,6 +48,8 @@
     
     .meet-link { display: inline-block; padding: 4px 8px; background: #dbeafe; color: #1e40af; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold; }
     .meet-link:hover { background: #bfdbfe; }
+    
+    .account-badge { font-size: 11px; color: #666; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; display: inline-block; }
 
     /* --- 生成ツール用 --- */
     .box { max-width: 520px; margin: auto; background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; }
@@ -99,7 +101,7 @@
             <th>時間</th>
             <th>お名前</th>
             <th>ステータス</th>
-            <th>Meet</th>
+            <th>アカウント</th> <th>Meet</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -138,7 +140,7 @@
 
 <script>
 (() => {
-  // ★ここにあなたの正しいURLを埋め込みました
+  // ★最新URLセット済み
   const API_URL = "https://script.google.com/macros/s/AKfycbz3AX4cK2ViWserTlSrlBg66hiNrAxwP4xZFeWb5tFPegzfGxikb7yAH0jNXVlrezRp/exec";
 
   let allData = [];
@@ -283,7 +285,7 @@
   function renderList(data, isFiltered=false) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = "";
-    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
+    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='6' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
     
     const fragment = document.createDocumentFragment();
     
@@ -307,7 +309,11 @@
       if(highlight && hTime && row[3]===hTime) tr.classList.add("highlight-next");
       
       const meetUrl = row[18] ? `<a href="${row[18]}" target="_blank" class="meet-link">📹参加</a>` : "";
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${meetUrl}</td>`;
+      
+      // ★アカウント表示用カラム追加（T列=index19）
+      const accountBadge = row[19] ? `<span class="account-badge">${row[19]}</span>` : '<span style="font-size:10px;color:#ddd;">-</span>';
+
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${accountBadge}</td><td>${meetUrl}</td>`;
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
