@@ -34,8 +34,11 @@
     .controls-area { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: center;}
     .btn-sub { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; color: #555; font-size: 13px; cursor: pointer; }
     #btnTodayReset { background-color: #dcfce7; color: #14532d; border: 1px solid #86efac; font-weight: bold; }
-    #btnGenerateMeet { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; font-weight: bold; display: flex; align-items: center; gap: 4px; }
-    #btnGenerateMeetForDate { background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-weight: bold; display: flex; align-items: center; gap: 4px; }
+    
+    /* ★修正：justify-content: center; を追加して文字を真ん中に */
+    #btnGenerateMeet { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    #btnGenerateMeetForDate { background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    
     #btnDeleteDayBatch { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; font-weight: bold; margin-left: auto; }
 
     .search-area { margin-bottom: 10px; }
@@ -66,7 +69,7 @@
     button.danger { background: #ef4444; } 
     button.primary-sub { background: #4f46e5; }
     button.add-btn { background: #10b981; }
-    button.delete-row-btn { background: #b91c1c; color: #fff; margin-top: 10px; } /* 行削除用 */
+    button.delete-row-btn { background: #b91c1c; color: #fff; margin-top: 10px; }
     button:hover { opacity: .92; }
     
     textarea { height: 180px; margin-top: 12px; font-size: 14px; line-height: 1.6; font-family: monospace; white-space: pre-wrap; }
@@ -270,7 +273,6 @@
         await callApi("deleteSingle", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnDeleteSingle", "削除中...");
     };
 
-    // ★新規予約追加ボタン
     document.getElementById('btnAddManual').onclick = async () => {
         const d = addDateEl.value;
         const t = addTimeEl.value;
@@ -284,7 +286,6 @@
         loadData();
     };
 
-    // ★予約自体を削除ボタン
     document.getElementById('btnDeleteRow').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから削除したい人を選んでください"); return; }
         if(!confirm(`⚠️【重要】\n${selectedCustomerName} 様の予約データ自体を完全に削除しますか？\n（スプレッドシートの行が消えます）`)) return;
@@ -393,7 +394,6 @@
     tbody.appendChild(fragment);
   }
 
-  // Util
   function safeDate(s) { const m=s.match(/(\d{4})[\.\/\-](\d{1,2})[\.\/\-](\d{1,2})/); return m?`${m[1]}-${m[2]}-${m[3]}`:""; }
   function isHoliday(y, m, d) { return ["2025-01-01","2025-01-13","2025-02-11","2025-02-23","2025-02-24","2025-03-20","2025-04-29","2025-05-03","2025-05-04","2025-05-05","2025-05-06","2025-07-21","2025-08-11","2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24","2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-21","2026-04-29","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11","2026-09-21","2026-09-23","2026-10-12","2026-11-03","2026-11-23"].includes(`${y}-${('0'+m).slice(-2)}-${('0'+d).slice(-2)}`); }
   
