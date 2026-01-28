@@ -53,6 +53,11 @@
     .meet-link { display: inline-block; padding: 4px 8px; background: #dbeafe; color: #1e40af; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold; }
     .meet-link:hover { background: #bfdbfe; }
     .account-badge { font-size: 11px; color: #666; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+    
+    /* ★コピーボタンのスタイル */
+    .copy-link-btn { padding: 4px 8px; background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    .copy-link-btn:hover { background: #e5e7eb; }
+    .copy-link-btn:active { background: #d1d5db; }
 
     /* --- Box --- */
     .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; }
@@ -115,7 +120,7 @@
               <th>ステータス</th>
               <th>アカウント</th>
               <th>Meet</th>
-            </tr>
+              <th>コピー</th> </tr>
           </thead>
           <tbody id="tableBody"></tbody>
         </table>
@@ -165,7 +170,8 @@
       <label>ステータス</label>
       <select id="addStatus">
         <option>予約確定</option>
-        <option>月次面談</option> <option>キャンセル</option>
+        <option>月次面談</option>
+        <option>キャンセル</option>
         <option>予約確定（手動追加）</option>
       </select>
       <button class="add-btn" id="btnAddManual" style="margin-top:20px;">＋ 予約を追加する</button>
@@ -176,7 +182,6 @@
 
 <script>
 (() => {
-  // ★最新URLセット済み
   const API_URL = "https://script.google.com/macros/s/AKfycbz3AX4cK2ViWserTlSrlBg66hiNrAxwP4xZFeWb5tFPegzfGxikb7yAH0jNXVlrezRp/exec";
 
   let allData = [];
@@ -349,7 +354,7 @@
   function renderList(data, isFiltered=false) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = "";
-    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='6' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
+    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
     
     const fragment = document.createDocumentFragment();
     
@@ -371,10 +376,14 @@
       const tr = document.createElement('tr'); tr.className = "clickable";
       const name = row[12]||row[6]||"なし";
       if(highlight && hTime && row[3]===hTime) tr.classList.add("highlight-next");
+      
       const meetUrl = row[18] ? `<a href="${row[18]}" target="_blank" class="meet-link">📹参加</a>` : "";
       const accountBadge = row[19] ? `<span class="account-badge">${row[19]}</span>` : '<span style="font-size:10px;color:#ddd;">-</span>';
+      
+      // ★コピーボタンの追加 (URLがある時だけ表示)
+      const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
 
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${accountBadge}</td><td>${meetUrl}</td>`;
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
@@ -390,6 +399,20 @@
     tbody.appendChild(fragment);
   }
 
+  // ★URLコピー用の関数（アラート付き）
+  window.copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // 小さく通知を表示
+      const statusEl = document.getElementById("status");
+      statusEl.textContent = "リンクをコピーしました！📋";
+      setTimeout(() => statusEl.textContent = "", 2000);
+    } catch (err) {
+      alert("コピーに失敗しました");
+    }
+  };
+
+  // Util
   function safeDate(s) { const m=s.match(/(\d{4})[\.\/\-](\d{1,2})[\.\/\-](\d{1,2})/); return m?`${m[1]}-${m[2]}-${m[3]}`:""; }
   function isHoliday(y, m, d) { return ["2025-01-01","2025-01-13","2025-02-11","2025-02-23","2025-02-24","2025-03-20","2025-04-29","2025-05-03","2025-05-04","2025-05-05","2025-05-06","2025-07-21","2025-08-11","2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24","2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-21","2026-04-29","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11","2026-09-21","2026-09-23","2026-10-12","2026-11-03","2026-11-23"].includes(`${y}-${('0'+m).slice(-2)}-${('0'+d).slice(-2)}`); }
   
