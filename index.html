@@ -138,7 +138,7 @@
 
 <script>
 (() => {
-  // ★重要：画像の最新URLを埋め込みました！
+  // ★重要：画像から読み取った、あなたの最新URLをセットしました！
   const API_URL = "https://script.google.com/macros/s/AKfycbz3AX4cK2ViWserTlSrlBg66hiNrAxwP4xZFeWb5tFPegzfgxikb7yAH0jNXVlrezRp/exec";
 
   let allData = [];
@@ -248,8 +248,8 @@
         document.getElementById('loading').style.display = 'none';
         document.getElementById('customerTable').style.display = 'table';
     }).catch(err => {
-        document.getElementById('loading').textContent = "読み込みエラー(URL確認): " + err;
-        alert("データの読み込みに失敗しました。\nAPI URLが正しいか確認してください。");
+        document.getElementById('loading').textContent = "読み込みエラー";
+        alert("データの読み込みに失敗しました。\nGASのデプロイが「新バージョン」で更新されているか確認してください。");
     });
   }
 
@@ -324,33 +324,25 @@
   function safeDate(s) { const m=s.match(/(\d{4})[\.\/\-](\d{1,2})[\.\/\-](\d{1,2})/); return m?`${m[1]}-${m[2]}-${m[3]}`:""; }
   function isHoliday(y, m, d) { return ["2025-01-01","2025-01-13","2025-02-11","2025-02-23","2025-02-24","2025-03-20","2025-04-29","2025-05-03","2025-05-04","2025-05-05","2025-05-06","2025-07-21","2025-08-11","2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24","2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-21","2026-04-29","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11","2026-09-21","2026-09-23","2026-10-12","2026-11-03","2026-11-23"].includes(`${y}-${('0'+m).slice(-2)}-${('0'+d).slice(-2)}`); }
   
-  // ★日付比較用の数値変換（高速・安全）
-  function getNumericDate(str) {
-      if(!str) return 0;
-      const s = str.replace(/[^\d]/g, ""); 
-      return parseInt(s) || 0; 
+  function sortDataByDateDesc(dataList) {
+    return dataList.sort((a, b) => {
+        const dA = (a[2] || "").trim(); const dB = (b[2] || "").trim();
+        if (dA !== dB) return dB.localeCompare(dA);
+        return parseTime(a[3]) - parseTime(b[3]);
+    });
   }
-  // ★時間比較用の数値変換
   function parseTime(tStr) {
       if (!tStr) return 9999;
       const parts = String(tStr).split(":");
-      return parseInt(parts[0]) * 60 + (parseInt(parts[1]) || 0);
-  }
-
-  // ★並び替え：日付降順(新しい順) -> 時間昇順(早い順)
-  function sortDataByDateDesc(dataList) {
-    return dataList.sort((a, b) => {
-        const dA = getNumericDate(a[2]); 
-        const dB = getNumericDate(b[2]);
-        if (dA !== dB) return dB - dA; // 日付降順
-        return parseTime(a[3]) - parseTime(b[3]); // 時間昇順
-    });
+      const h = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) || 0;
+      if (isNaN(h)) return 9999;
+      return h * 60 + m;
   }
   function sortDataByTime(dataList) { return dataList.sort((a,b)=>parseTime(a[3]) - parseTime(b[3])); }
 
   function filterListByDate(targetDateStr) {
     const filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
-    // 全て時間順で統一
     renderList(sortDataByTime(filtered), true); 
   }
 
