@@ -9,8 +9,13 @@
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif; background: #f5f7fb; padding: 20px; }
 
+    /* --- レイアウト調整 (左右配置用) --- */
+    .main-wrapper { display: flex; flex-wrap: wrap; gap: 20px; max-width: 1400px; margin: 0 auto; }
+    .left-column { flex: 2; min-width: 500px; } /* カレンダー・リスト側 */
+    .right-column { flex: 1; min-width: 350px; display: flex; flex-direction: column; gap: 20px; } /* ツール側 */
+
     /* --- リストエリア --- */
-    .list-container { max-width: 900px; margin: 0 auto 30px auto; background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+    .list-container { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); }
 
     .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; color: #333; font-size: 1.1em; }
     .calendar-nav-btn { background: #f0f2f5; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-weight: bold; color: #555; }
@@ -29,14 +34,13 @@
     .controls-area { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: center;}
     .btn-sub { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; color: #555; font-size: 13px; cursor: pointer; }
     #btnTodayReset { background-color: #dcfce7; color: #14532d; border: 1px solid #86efac; font-weight: bold; }
-    
     #btnGenerateMeet { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; font-weight: bold; display: flex; align-items: center; gap: 4px; }
     #btnGenerateMeetForDate { background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-weight: bold; display: flex; align-items: center; gap: 4px; }
     #btnDeleteDayBatch { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; font-weight: bold; margin-left: auto; }
 
     .search-area { margin-bottom: 10px; }
     .search-area input { margin-top: 0; }
-    .table-wrapper { max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
+    .table-wrapper { max-height: 500px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
     table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 13px; }
     th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; vertical-align: middle; }
     th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 1; }
@@ -48,12 +52,11 @@
     
     .meet-link { display: inline-block; padding: 4px 8px; background: #dbeafe; color: #1e40af; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold; }
     .meet-link:hover { background: #bfdbfe; }
-    
     .account-badge { font-size: 11px; color: #666; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; display: inline-block; }
 
-    /* --- 生成ツール用 --- */
-    .box { max-width: 520px; margin: auto; background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; }
-    h1 { font-size: 18px; margin: 0 0 16px; }
+    /* --- 生成ツール＆追加ツール用共通Box --- */
+    .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; }
+    h1 { font-size: 18px; margin: 0 0 16px; display:flex; align-items:center; gap:8px; }
     label { display: block; margin-top: 12px; font-size: 13px; color: #555; }
     input, select, button, textarea { width: 100%; padding: 10px; margin-top: 6px; font-size: 15px; border-radius: 10px; border: 1px solid #d7dbe6; background: #fff; }
     .dateWrap { position: relative; }
@@ -62,81 +65,120 @@
     button.secondary { background: #111827; }
     button.danger { background: #ef4444; } 
     button.primary-sub { background: #4f46e5; }
+    button.add-btn { background: #10b981; } /* 追加ボタン用緑色 */
     button:hover { opacity: .92; }
-    textarea { height: 260px; margin-top: 12px; font-size: 14px; line-height: 1.6; font-family: monospace; white-space: pre-wrap; }
+    
+    /* メモツール固有 */
+    textarea { height: 180px; margin-top: 12px; font-size: 14px; line-height: 1.6; font-family: monospace; white-space: pre-wrap; }
     .status { margin-top: 8px; font-size: 12px; color: #0f766e; min-height: 16px; }
     #selectedNameDisplay { font-size:12px; color:#666; position:absolute; top:20px; right:20px; font-weight:bold; }
-    
     .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
+
+    @media (max-width: 900px) {
+        .main-wrapper { flex-direction: column; }
+        .left-column, .right-column { min-width: 100%; flex: auto; }
+    }
   </style>
 </head>
 <body>
 
-  <div class="list-container">
-    <h2>📅 予約リスト</h2>
-    
-    <div class="calendar-header">
-        <button class="calendar-nav-btn" id="prevMonthBtn">＜</button>
-        <span id="calendarTitle"></span>
-        <button class="calendar-nav-btn" id="nextMonthBtn">＞</button>
-    </div>
-    <div class="calendar-grid" id="calendarGrid"></div>
-    
-    <div class="controls-area">
-        <button class="btn-sub" id="btnTodayReset">今日に戻る</button>
-        <button class="btn-sub" id="btnShowAll">リスト全表示</button>
-        <button class="btn-sub" id="btnGenerateMeet">⚡ 全一括発行</button>
-        <button class="btn-sub" id="btnGenerateMeetForDate">⚡ 表示日のMeet発行</button>
-        <button class="btn-sub" id="btnDeleteDayBatch">🗑️ 表示日の全リンク削除</button>
-    </div>
+<div class="main-wrapper">
+  
+  <div class="left-column">
+    <div class="list-container">
+      <h2>📅 予約リスト</h2>
+      
+      <div class="calendar-header">
+          <button class="calendar-nav-btn" id="prevMonthBtn">＜</button>
+          <span id="calendarTitle"></span>
+          <button class="calendar-nav-btn" id="nextMonthBtn">＞</button>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+      
+      <div class="controls-area">
+          <button class="btn-sub" id="btnTodayReset">今日に戻る</button>
+          <button class="btn-sub" id="btnShowAll">リスト全表示</button>
+          <button class="btn-sub" id="btnGenerateMeet">⚡ 全一括発行</button>
+          <button class="btn-sub" id="btnGenerateMeetForDate">⚡ 表示日のMeet発行</button>
+          <button class="btn-sub" id="btnDeleteDayBatch">🗑️ 表示日の全リンク削除</button>
+      </div>
 
-    <div class="search-area"><input type="text" id="searchInput" placeholder="名前で検索..."></div>
-    <div id="loading" style="font-size:12px; color:#666;">読み込み中...</div>
+      <div class="search-area"><input type="text" id="searchInput" placeholder="名前で検索..."></div>
+      <div id="loading" style="font-size:12px; color:#666;">読み込み中...</div>
 
-    <div class="table-wrapper">
-      <table id="customerTable" style="display:none;">
-        <thead>
-          <tr>
-            <th>来店日</th>
-            <th>時間</th>
-            <th>お名前</th>
-            <th>ステータス</th>
-            <th>アカウント</th> <th>Meet</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-
-  <div class="box" id="toolBox">
-    <h1>🗓 面談メモ生成ツール</h1>
-    <div id="selectedNameDisplay"></div>
-
-    <label>日付</label>
-    <div class="dateWrap"><input type="date" id="date"></div>
-    <label>開始時間</label>
-    <select id="time"></select>
-    <label>面談方法</label>
-    <select id="method">
-      <option>Google Meet</option>
-      <option>電話</option>
-      <option>LINE</option>
-      <option>メール</option>
-    </select>
-    <div class="btnRow">
-      <button id="copyAllBtn">全文コピー</button>
-      <button class="secondary" id="copyDateBtn">日時のみコピー</button>
-    </div>
-    <div class="status" id="status"></div>
-    <textarea id="preview" readonly></textarea>
-
-    <div class="action-row">
-        <button class="primary-sub" id="btnCreateSingle">🔗 個別リンク発行</button>
-        <button class="danger" id="btnDeleteSingle">🗑️ リンク削除</button>
+      <div class="table-wrapper">
+        <table id="customerTable" style="display:none;">
+          <thead>
+            <tr>
+              <th>来店日</th>
+              <th>時間</th>
+              <th>お名前</th>
+              <th>ステータス</th>
+              <th>アカウント</th>
+              <th>Meet</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
+
+  <div class="right-column">
+    
+    <div class="box" id="toolBox">
+      <h1>🗓 面談メモ生成</h1>
+      <div id="selectedNameDisplay"></div>
+
+      <label>日付</label>
+      <div class="dateWrap"><input type="date" id="date"></div>
+      <label>開始時間</label>
+      <select id="time"></select>
+      <label>面談方法</label>
+      <select id="method">
+        <option>Google Meet</option>
+        <option>電話</option>
+        <option>LINE</option>
+        <option>メール</option>
+      </select>
+      <div class="btnRow">
+        <button id="copyAllBtn">全文コピー</button>
+        <button class="secondary" id="copyDateBtn">日時のみコピー</button>
+      </div>
+      <div class="status" id="status"></div>
+      <textarea id="preview" readonly></textarea>
+
+      <div class="action-row">
+          <button class="primary-sub" id="btnCreateSingle">🔗 個別リンク発行</button>
+          <button class="danger" id="btnDeleteSingle">🗑️ リンク削除</button>
+      </div>
+    </div>
+
+    <div class="box" id="addBox">
+      <h1>📝 新規予約登録 <span style="font-size:12px;color:#666;font-weight:normal">(スプシに追加)</span></h1>
+      
+      <label>来店日</label>
+      <input type="date" id="addDate">
+      
+      <label>時間</label>
+      <select id="addTime"></select>
+      
+      <label>お名前</label>
+      <input type="text" id="addName" placeholder="山田 太郎">
+      
+      <label>ステータス</label>
+      <select id="addStatus">
+        <option>予約確定</option>
+        <option>仮予約</option>
+        <option>キャンセル</option>
+        <option>予約確定（手動追加）</option>
+      </select>
+      
+      <button class="add-btn" id="btnAddManual" style="margin-top:20px;">＋ 予約を追加する</button>
+    </div>
+
+  </div>
+</div>
 
 <script>
 (() => {
@@ -156,21 +198,30 @@
   const statusEl = document.getElementById("status");
   const nameDisplay = document.getElementById("selectedNameDisplay");
 
+  // 新規追加用
+  const addDateEl = document.getElementById("addDate");
+  const addTimeEl = document.getElementById("addTime");
+  const addNameEl = document.getElementById("addName");
+  const addStatusEl = document.getElementById("addStatus");
+
   function init() { buildTimes(); setToday(); renderPreview(); loadData(); setupEvents(); }
 
   function buildTimes() {
-    timeEl.innerHTML = "";
+    timeEl.innerHTML = ""; addTimeEl.innerHTML = ""; // 両方のTimeSelectを作る
     for (let h = 5; h <= 23; h++) {
       const opt = document.createElement("option");
       opt.value = String(h);
       opt.textContent = `${h}時～`;
       if(h === 10) opt.selected = true;
       timeEl.appendChild(opt);
+      addTimeEl.appendChild(opt.cloneNode(true)); // 追加用にもコピー
     }
   }
   function setToday() {
     const t = new Date();
-    dateEl.value = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+    const s = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+    dateEl.value = s;
+    addDateEl.value = s; // 追加用も今日に
   }
 
   function setupEvents() {
@@ -226,6 +277,23 @@
         if(!confirm(`【個別削除】\n${selectedCustomerName} 様のリンクを削除しますか？`)) return;
         await callApi("deleteSingle", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnDeleteSingle", "削除中...");
     };
+
+    // ★新規予約追加ボタン
+    document.getElementById('btnAddManual').onclick = async () => {
+        const d = addDateEl.value;
+        const t = addTimeEl.value;
+        const n = addNameEl.value;
+        const s = addStatusEl.value;
+        if(!d || !n) { alert("日付とお名前は必須です"); return; }
+        if(!confirm(`${d} ${t}時～\n${n} 様\n\nこの内容で予約を追加しますか？`)) return;
+        
+        await callApi("manualAdd", { date: d, time: t + ":00", name: n, status: s }, "btnAddManual", "追加中...");
+        // 追加後にフォームを少しクリア
+        addNameEl.value = "";
+        alert("追加しました！リストを更新します。");
+        // リストを再読み込み
+        loadData();
+    };
   }
 
   async function callApi(action, params, btnId, loadingText) {
@@ -235,7 +303,8 @@
     try {
         const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: action, ...params }) });
         const result = await response.json();
-        alert(result.message); loadData();
+        // manualAdd以外はここでアラート出す（manualAddは個別に処理）
+        if(action !== "manualAdd") { alert(result.message); loadData(); }
     } catch(e) { alert("エラー: " + e.message); } 
     finally { btn.textContent = originalText; btn.disabled = false; }
   }
@@ -251,7 +320,7 @@
         document.getElementById('customerTable').style.display = 'table';
     }).catch(err => {
         document.getElementById('loading').textContent = "読み込みエラー";
-        alert("データの読み込みに失敗しました。\nAPI URLが正しいか確認してください。");
+        alert("データの読み込みに失敗しました。");
     });
   }
 
@@ -310,7 +379,6 @@
       
       const meetUrl = row[18] ? `<a href="${row[18]}" target="_blank" class="meet-link">📹参加</a>` : "";
       
-      // ★アカウント表示用カラム追加（T列=index19）
       const accountBadge = row[19] ? `<span class="account-badge">${row[19]}</span>` : '<span style="font-size:10px;color:#ddd;">-</span>';
 
       tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${accountBadge}</td><td>${meetUrl}</td>`;
