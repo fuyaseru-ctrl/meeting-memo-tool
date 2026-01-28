@@ -33,7 +33,6 @@
     /* ボタン色分け */
     #btnGenerateMeet { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; font-weight: bold; display: flex; align-items: center; gap: 4px; }
     #btnGenerateMeetForDate { background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-weight: bold; display: flex; align-items: center; gap: 4px; }
-    
     #btnDeleteDayBatch { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; font-weight: bold; margin-left: auto; }
 
     .search-area { margin-bottom: 10px; }
@@ -87,7 +86,6 @@
         <button class="btn-sub" id="btnShowAll">リスト全表示</button>
         <button class="btn-sub" id="btnGenerateMeet">⚡ 全一括発行</button>
         <button class="btn-sub" id="btnGenerateMeetForDate">⚡ 表示日のMeet発行</button>
-        
         <button class="btn-sub" id="btnDeleteDayBatch">🗑️ 表示日の全リンク削除</button>
     </div>
 
@@ -206,7 +204,6 @@
         await callApi("generateLinks", {}, "btnGenerateMeet", "全発行中...");
     };
     
-    // ★新機能：表示日の一括発行
     document.getElementById('btnGenerateMeetForDate').onclick = async () => {
         if(!currentSelectedDateStr) { alert("カレンダーから日付を選んでください"); return; }
         const formattedDate = currentSelectedDateStr.replace(/\./g, '-');
@@ -342,14 +339,11 @@
       return h * 60 + m;
   }
   function sortDataByTime(dataList) { return dataList.sort((a,b)=>parseTime(a[3]) - parseTime(b[3])); }
-  function sortDataByName(dataList) { return dataList.sort((a, b) => (a[12]||a[6]||"").localeCompare(b[12]||b[6]||"", "ja")); }
 
+  // ★ここを修正：名前順の分岐を削除し、常に時間順に！
   function filterListByDate(targetDateStr) {
     const filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}.${('0'+(today.getMonth()+1)).slice(-2)}.${('0'+today.getDate()).slice(-2)}`;
-    if (targetDateStr < todayStr) renderList(sortDataByName(filtered), true);
-    else renderList(sortDataByTime(filtered), true); 
+    renderList(sortDataByTime(filtered), true); 
   }
 
   function fmtDateParts() { const v=dateEl.value; if(!v)return null; const d=new Date(v+"T00:00:00"); return {y:d.getFullYear(),m:d.getMonth()+1,d:d.getDate(),w:week[d.getDay()],h:timeEl.value,mt:methodEl.value}; }
