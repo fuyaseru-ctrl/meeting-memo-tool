@@ -139,7 +139,8 @@
 
 <script>
 (() => {
-  const API_URL = "https://script.google.com/macros/s/AKfycbwZUns-QZWJcRTAzQLOWDbO6DfiuMgRK-js-nMqyV0L2dtp7H10lGYf50WmagPUz72y/exec";
+  // ★重要！ここに新しいURL（末尾が lrezRp のやつ）を貼ってください！
+  const API_URL = "ここに新しいURLを貼り付けてください";
 
   let allData = [];
   let calDate = new Date(); 
@@ -340,7 +341,10 @@
   }
   function sortDataByTime(dataList) { return dataList.sort((a,b)=>parseTime(a[3]) - parseTime(b[3])); }
 
-  // ★ここを修正：名前順の分岐を削除し、常に時間順に！
+  // 名前順ソート（削除済みですが変数として残します）
+  function sortDataByName(dataList) { return dataList.sort((a, b) => (a[12]||a[6]||"").localeCompare(b[12]||b[6]||"", "ja")); }
+
+  // ★ここを修正：常に時間順（sortDataByTime）を使用！
   function filterListByDate(targetDateStr) {
     const filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
     renderList(sortDataByTime(filtered), true); 
