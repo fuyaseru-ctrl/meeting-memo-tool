@@ -139,8 +139,8 @@
 
 <script>
 (() => {
-  // ★重要！ここに新しいURL（末尾が lrezRp のやつ）を貼ってください！
-  const API_URL = "ここに新しいURLを貼り付けてください";
+  // ★重要：さっきの最新URL（末尾が lrezRp のやつ）をここに貼ってください
+  const API_URL = "ここに最新のURLを貼り付けてください";
 
   let allData = [];
   let calDate = new Date(); 
@@ -204,15 +204,12 @@
         if(!confirm("【全データ対象】\n未発行の予約に対して、Meetリンクを一括発行しますか？")) return;
         await callApi("generateLinks", {}, "btnGenerateMeet", "全発行中...");
     };
-    
     document.getElementById('btnGenerateMeetForDate').onclick = async () => {
         if(!currentSelectedDateStr) { alert("カレンダーから日付を選んでください"); return; }
         const formattedDate = currentSelectedDateStr.replace(/\./g, '-');
         if(!confirm(`【${formattedDate} のみ対象】\nこの日の未発行予約に対して、Meetリンクを一括発行しますか？`)) return;
-        
         await callApi("generateLinksForDate", { date: formattedDate }, "btnGenerateMeetForDate", "発行中...");
     };
-
     document.getElementById('btnDeleteDayBatch').onclick = async () => {
         if(!currentSelectedDateStr) { alert("カレンダーから削除したい日付を選んでください"); return; }
         if(!confirm(`【注意】\n${currentSelectedDateStr.replace(/\./g,'-')} のリンクを全削除しますか？`)) return;
@@ -282,8 +279,12 @@
   }
 
   function renderList(data, isFiltered=false) {
-    const tbody = document.getElementById('tableBody'); tbody.innerHTML = "";
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = "";
     if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
+    
+    // ★高速化ポイント：DocumentFragmentを使って一気に描画
+    const fragment = document.createDocumentFragment();
     
     const today = new Date();
     const todayStr = `${today.getFullYear()}.${('0'+(today.getMonth()+1)).slice(-2)}.${('0'+today.getDate()).slice(-2)}`;
@@ -316,37 +317,37 @@
         renderPreview();
         if(window.innerWidth < 600) document.getElementById('toolBox').scrollIntoView({behavior:"smooth"});
       };
-      tbody.appendChild(tr);
+      fragment.appendChild(tr);
     });
+    tbody.appendChild(fragment); // 一括追加
   }
 
   // Util
   function safeDate(s) { const m=s.match(/(\d{4})[\.\/\-](\d{1,2})[\.\/\-](\d{1,2})/); return m?`${m[1]}-${m[2]}-${m[3]}`:""; }
   function isHoliday(y, m, d) { return ["2025-01-01","2025-01-13","2025-02-11","2025-02-23","2025-02-24","2025-03-20","2025-04-29","2025-05-03","2025-05-04","2025-05-05","2025-05-06","2025-07-21","2025-08-11","2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24","2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-21","2026-04-29","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11","2026-09-21","2026-09-23","2026-10-12","2026-11-03","2026-11-23"].includes(`${y}-${('0'+m).slice(-2)}-${('0'+d).slice(-2)}`); }
   
+  // ★高速化＆シンプル化（新しい順＋早い順）
   function sortDataByDateDesc(dataList) {
     return dataList.sort((a, b) => {
         const dA = (a[2] || "").trim(); const dB = (b[2] || "").trim();
-        if (dA !== dB) return dB.localeCompare(dA);
+        // 単純比較（軽い）
+        if (dA > dB) return -1;
+        if (dA < dB) return 1;
+        // 時間比較
         return parseTime(a[3]) - parseTime(b[3]);
     });
   }
   function parseTime(tStr) {
       if (!tStr) return 9999;
+      // 高速化：文字列操作を減らす
       const parts = String(tStr).split(":");
-      const h = parseInt(parts[0], 10);
-      const m = parseInt(parts[1], 10) || 0;
-      if (isNaN(h)) return 9999;
-      return h * 60 + m;
+      return parseInt(parts[0]) * 60 + (parseInt(parts[1]) || 0);
   }
   function sortDataByTime(dataList) { return dataList.sort((a,b)=>parseTime(a[3]) - parseTime(b[3])); }
 
-  // 名前順ソート（削除済みですが変数として残します）
-  function sortDataByName(dataList) { return dataList.sort((a, b) => (a[12]||a[6]||"").localeCompare(b[12]||b[6]||"", "ja")); }
-
-  // ★ここを修正：常に時間順（sortDataByTime）を使用！
   function filterListByDate(targetDateStr) {
     const filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
+    // 過去も未来も「時間順」に統一（高速）
     renderList(sortDataByTime(filtered), true); 
   }
 
