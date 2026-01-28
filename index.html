@@ -55,15 +55,14 @@
     .copy-link-btn { padding: 4px 8px; background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 14px; }
     .copy-link-btn:hover { background: #e5e7eb; }
 
-    /* ★ステータス色分け用CSS */
+    /* ステータス色分け */
     .status-tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
-    .status-red { color: #d93025; background: #fce8e6; border: 1px solid #f28b82; } /* 初回面談 */
-    .status-blue { color: #1a73e8; background: #e8f0fe; border: 1px solid #8ab4f8; } /* 〇ヵ月面談 */
-    .status-orange { color: #e37400; background: #fcefc7; border: 1px solid #fdd663; } /* 満期面談 */
+    .status-red { color: #d93025; background: #fce8e6; border: 1px solid #f28b82; } 
+    .status-blue { color: #1a73e8; background: #e8f0fe; border: 1px solid #8ab4f8; } 
+    .status-orange { color: #e37400; background: #fcefc7; border: 1px solid #fdd663; } 
     
-    /* ★キャンセル行のスタイル（打消し線） */
     tr.row-cancelled td { text-decoration: line-through; color: #9ca3af; }
-    tr.row-cancelled .meet-link, tr.row-cancelled .copy-link-btn { text-decoration: none; opacity: 0.6; } /* ボタンは打消し線しない */
+    tr.row-cancelled .meet-link, tr.row-cancelled .copy-link-btn { text-decoration: none; opacity: 0.6; }
 
     /* --- Box --- */
     .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; }
@@ -77,10 +76,11 @@
     button.danger { background: #ef4444; } 
     button.primary-sub { background: #4f46e5; }
     button.add-btn { background: #10b981; }
-    
-    /* キャンセルボタン */
     button.cancel-status-btn { background: #6b7280; color: #fff; margin-top: 10px; }
-    button:hover { opacity: .92; }
+    
+    /* ★編集エリア用 */
+    .edit-status-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+    .edit-status-row button { width: auto; background: #0891b2; font-size: 13px; padding: 10px 16px;}
     
     textarea { height: 180px; margin-top: 12px; font-size: 14px; line-height: 1.6; font-family: monospace; white-space: pre-wrap; }
     .status { margin-top: 8px; font-size: 12px; color: #0f766e; min-height: 16px; }
@@ -140,8 +140,26 @@
   <div class="right-column">
     
     <div class="box" id="toolBox">
-      <h1>🗓 面談メモ生成</h1>
+      <h1>🗓 面談メモ生成 & 操作</h1>
       <div id="selectedNameDisplay"></div>
+
+      <div class="edit-status-row">
+        <div style="flex:1">
+            <label style="margin-top:0">ステータス変更</label>
+            <select id="editStatus">
+                <option>予約確定</option>
+                <option>初回面談</option>
+                <option>１ヵ月面談</option>
+                <option>２ヵ月面談</option>
+                <option>３ヵ月面談</option>
+                <option>４ヵ月面談</option>
+                <option>５ヵ月面談</option>
+                <option>満期面談</option>
+                <option>キャンセル</option>
+            </select>
+        </div>
+        <button id="btnUpdateStatus">🔄 更新</button>
+      </div>
 
       <label>日付</label>
       <div class="dateWrap"><input type="date" id="date"></div>
@@ -211,6 +229,8 @@
   const previewEl = document.getElementById("preview");
   const statusEl = document.getElementById("status");
   const nameDisplay = document.getElementById("selectedNameDisplay");
+  
+  const editStatusEl = document.getElementById("editStatus"); // ★変更用
 
   const addDateEl = document.getElementById("addDate");
   const addTimeEl = document.getElementById("addTime");
@@ -302,12 +322,21 @@
         loadData();
     };
 
-    // ★キャンセルボタン
     document.getElementById('btnCancelStatus').onclick = async () => {
         if(!selectedCustomerName) { alert("リストからキャンセルしたい人を選んでください"); return; }
         if(!confirm(`🚫 キャンセル処理を行いますか？\n\n対象：${selectedCustomerName} 様\n\n・カレンダーの予定は削除されます\n・Meetリンクは残ります\n・ステータスが「キャンセル」になります`)) return;
         await callApi("cancelStatus", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnCancelStatus", "処理中...");
         alert("キャンセル処理完了");
+        loadData();
+    };
+
+    // ★ステータス更新ボタン
+    document.getElementById('btnUpdateStatus').onclick = async () => {
+        if(!selectedCustomerName) { alert("リストから人を選んでください"); return; }
+        const newStat = editStatusEl.value;
+        if(!confirm(`${selectedCustomerName} 様のステータスを\n「${newStat}」に変更しますか？`)) return;
+        await callApi("updateStatus", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName, newStatus: newStat }, "btnUpdateStatus", "更新中...");
+        alert("ステータスを更新しました！");
         loadData();
     };
   }
@@ -319,7 +348,7 @@
     try {
         const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: action, ...params }) });
         const result = await response.json();
-        if(action !== "manualAdd" && action !== "cancelStatus") { alert(result.message); loadData(); }
+        if(action !== "manualAdd" && action !== "cancelStatus" && action !== "updateStatus") { alert(result.message); loadData(); }
     } catch(e) { alert("エラー: " + e.message); } 
     finally { btn.textContent = originalText; btn.disabled = false; }
   }
@@ -390,11 +419,10 @@
     data.forEach(row => {
       const tr = document.createElement('tr'); tr.className = "clickable";
       const name = row[12]||row[6]||"なし";
-      const status = row[5] || ""; // ステータス(F列)
+      const status = row[5] || ""; 
       
       if(highlight && hTime && row[3]===hTime) tr.classList.add("highlight-next");
       
-      // ★色分け＆キャンセル線の適用
       let statusHtml = status;
       if (status.includes("初回")) {
           statusHtml = `<span class="status-tag status-red">${status}</span>`;
@@ -403,7 +431,7 @@
       } else if (status.includes("満期")) {
           statusHtml = `<span class="status-tag status-orange">${status}</span>`;
       } else if (status.includes("キャンセル")) {
-          tr.classList.add("row-cancelled"); // 行全体に打消し線
+          tr.classList.add("row-cancelled"); 
       }
 
       const meetUrl = row[18] ? `<a href="${row[18]}" target="_blank" class="meet-link">📹参加</a>` : "";
@@ -419,6 +447,10 @@
         if(row[3]) timeEl.value = String(parseInt(row[3]));
         selectedCustomerName = name;
         nameDisplay.textContent = `選択中: ${name}`;
+        
+        // ★クリック時に現在のステータスをプルダウンにセット
+        editStatusEl.value = status || "予約確定";
+
         renderPreview();
         if(window.innerWidth < 600) document.getElementById('toolBox').scrollIntoView({behavior:"smooth"});
       };
