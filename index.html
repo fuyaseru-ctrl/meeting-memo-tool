@@ -34,11 +34,8 @@
     .controls-area { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: center;}
     .btn-sub { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; color: #555; font-size: 13px; cursor: pointer; }
     #btnTodayReset { background-color: #dcfce7; color: #14532d; border: 1px solid #86efac; font-weight: bold; }
-    
-    /* ★修正：justify-content: center; を追加して文字を真ん中に */
     #btnGenerateMeet { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; }
     #btnGenerateMeetForDate { background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; }
-    
     #btnDeleteDayBatch { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; font-weight: bold; margin-left: auto; }
 
     .search-area { margin-bottom: 10px; }
@@ -168,8 +165,7 @@
       <label>ステータス</label>
       <select id="addStatus">
         <option>予約確定</option>
-        <option>仮予約</option>
-        <option>キャンセル</option>
+        <option>月次面談</option> <option>キャンセル</option>
         <option>予約確定（手動追加）</option>
       </select>
       <button class="add-btn" id="btnAddManual" style="margin-top:20px;">＋ 予約を追加する</button>
