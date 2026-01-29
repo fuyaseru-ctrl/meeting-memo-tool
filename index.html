@@ -98,7 +98,7 @@
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
           <button style="background:#4f46e5;" id="btnCreateSingle">🔗 個別リンク発行</button><button class="danger" id="btnDeleteSingle">🗑️ リンク削除</button>
       </div>
-      <button class="cancel-status-btn" id="btnCancelStatus">🚫 キャンセル処理</button>
+      <button class="cancel-status-btn" id="btnCancelStatus">🚫 打消し線（ステータスのみ変更）</button>
       <div class="edit-status-row">
         <div style="flex:1"><label style="margin-top:0">ステータス変更</label>
             <select id="editStatus"><option>予約確定</option><option>初回面談</option><option>１ヵ月面談</option><option>２ヵ月面談</option><option>３ヵ月面談</option><option>４ヵ月面談</option><option>５ヵ月面談</option><option>満期面談</option><option>キャンセル</option></select>
@@ -143,7 +143,7 @@
         {id:'btnDeleteDayBatch', act:'deleteDayBatch', dateReq:true, msg:'表示日のリンクを全削除しますか？'},
         {id:'btnCreateSingle', act:'createSingle', nameReq:true, msg:'個別発行しますか？'},
         {id:'btnDeleteSingle', act:'deleteSingle', nameReq:true, msg:'リンクを削除しますか？'},
-        {id:'btnCancelStatus', act:'cancelStatus', nameReq:true, msg:'キャンセル処理しますか？'},
+        {id:'btnCancelStatus', act:'cancelStatus', nameReq:true, msg:'キャンセル扱いにしますか？\n（カレンダーやデータは削除されません）'},
         {id:'btnUpdateStatus', act:'updateStatus', nameReq:true, msg:'ステータスを更新しますか？', extra:{newStatus:()=>editStatusEl.value}}
     ];
     actions.forEach(a => {
@@ -222,7 +222,6 @@
       const copyBtn = row[18] ? `<button class="copy-link-btn" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
       const accountBadge = row[19] ? `<span class="account-badge">${row[19]}</span>` : '<span style="font-size:10px;color:#ddd;">-</span>';
       
-      // ★プルダウン生成 (LINE追加済)
       const opts = ["Google Meet", "電話", "LINE", "その他"].map(o => `<option value="${o}" ${o===methodVal?"selected":""}>${o}</option>`).join("");
       const selectHtml = `<select class="method-select" onclick="event.stopPropagation()" onchange="updateListMethod(this, '${row[2]}', '${row[3]}', '${name}')">${opts}</select>`;
 
