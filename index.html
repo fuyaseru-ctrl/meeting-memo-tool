@@ -114,7 +114,7 @@
         display: inline-block; /* 中央揃えの中に左揃えのブロックを作る */
         line-height: 1.6;
         width: 100%;
-        max-width: 220px;
+        max-width: 240px;
         border-top: 1px dashed #fcd34d;
         padding-top: 8px;
     }
@@ -462,15 +462,25 @@
     fetch(API_URL).then(res => res.json()).then(data => {
         allData = data;
         
-        // ▼▼▼ 集計ロジック追加 ▼▼▼
-        let totalPaid = 0;
+        // ▼▼▼ 集計ロジック（固定順序） ▼▼▼
+        const paymentOrder = [
+            "銀振一括",
+            "クレカ一括",
+            "クレカ 6分割",
+            "クレカ 12分割",
+            "クレカ 24分割",
+            "クレカ 36分割",
+            "クレカ 48分割"
+        ];
+        
         const counts = {};
+        let totalPaid = 0;
         
         allData.forEach(row => {
             const status = String(row[5] || "");
             const payment = String(row[20] || "").trim();
             
-            // 削除ステータス除外、支払い方法が空でないものだけ集計
+            // ステータス「削除」以外で、かつ入金情報があるもの
             if (status !== "削除" && payment !== "") {
                 totalPaid++;
                 counts[payment] = (counts[payment] || 0) + 1;
@@ -481,15 +491,30 @@
         const titleEl = document.querySelector(".payment-total-title");
         titleEl.textContent = `💰 合計入金件数：${totalPaid} 件`;
 
-        // 内訳表示
+        // 内訳表示 (指定順序でループ)
         let detailHtml = "";
+        let displayedCount = 0;
+        
         if (totalPaid > 0) {
+            paymentOrder.forEach(key => {
+                if (counts[key] && counts[key] > 0) {
+                    detailHtml += `<div class="payment-row"><span>${key}</span><span><b>${counts[key]}</b> 件</span></div>`;
+                    displayedCount++;
+                }
+            });
+            // リストにないイレギュラーな入金方法があった場合の対応（念のため）
             for (const [key, val] of Object.entries(counts)) {
-                detailHtml += `<div class="payment-row"><span>${key}</span><span><b>${val}</b> 件</span></div>`;
+                if (!paymentOrder.includes(key)) {
+                    detailHtml += `<div class="payment-row"><span>${key}</span><span><b>${val}</b> 件</span></div>`;
+                    displayedCount++;
+                }
             }
-        } else {
-            detailHtml = "<div style='text-align:center; color:#999;'>（まだありません）</div>";
         }
+        
+        if (displayedCount === 0) {
+            detailHtml = "<div style='text-align:center; color:#999; font-size:12px;'>（まだありません）</div>";
+        }
+        
         paymentDetailList.innerHTML = detailHtml;
         // ▲▲▲ 集計終了 ▲▲▲
 
@@ -577,14 +602,16 @@
       
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
       
-      // 入金プルダウン
+      // ★入金プルダウン生成（指定リスト）
       const paymentOptions = [
           { val: "", label: "未" },
           { val: "銀振一括", label: "💰 銀振一括" },
           { val: "クレカ一括", label: "💳 クレカ一括" },
-          { val: "クレカ分割 12分割", label: "💳 分割12回" },
-          { val: "クレカ分割 24分割", label: "💳 分割24回" },
-          { val: "クレカ分割 36分割", label: "💳 分割36回" }
+          { val: "クレカ 6分割", label: "💳 分割6回" },
+          { val: "クレカ 12分割", label: "💳 分割12回" },
+          { val: "クレカ 24分割", label: "💳 分割24回" },
+          { val: "クレカ 36分割", label: "💳 分割36回" },
+          { val: "クレカ 48分割", label: "💳 分割48回" }
       ];
       let paymentSelectHtml = `<select class="common-select" onclick="event.stopPropagation()" onchange="updatePayment('${row[2]}', '${row[3]}', '${name}', this.value)">`;
       paymentOptions.forEach(opt => {
