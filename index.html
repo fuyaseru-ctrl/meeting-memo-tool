@@ -171,7 +171,8 @@
           
           <button class="danger" id="btnDeleteSingle">🗑️ リンク削除</button>
       </div>
-      <button class="delete-row-btn" id="btnDeleteRow">❌ 予約自体を削除（スプシから消す）</button>
+      
+      <button class="delete-row-btn" id="btnDeleteRow">❌ 予約削除</button>
     </div>
 
     <div class="box" id="addBox">
@@ -289,20 +290,11 @@
         await callApi("createSingle", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnCreateSingle", "発行中...");
     };
     
-    // ▼▼▼ 追加：キャンセルボタンの動作 ▼▼▼
+    // --- オレンジ色のキャンセルボタンの動作 ---
     document.getElementById('btnCancelStatus').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから人を選んでください"); return; }
-        
-        // 確認ダイアログ
         if(!confirm(`【ステータス変更】\n${selectedCustomerName} 様の予約を「キャンセル」にしますか？\n\n・カレンダーの予定は削除されます\n・スプシの行とMeet履歴は残ります\n・ステータスが「キャンセル」になります`)) return;
-
-        // API呼び出し (GASの executeCancelStatus を実行)
-        await callApi("cancelStatus", { 
-            date: dateEl.value, 
-            time: timeEl.value, 
-            name: selectedCustomerName 
-        }, "btnCancelStatus", "キャンセル処理中...");
-        
+        await callApi("cancelStatus", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnCancelStatus", "キャンセル処理中...");
         alert("処理完了：ステータスをキャンセルに変更しました");
     };
 
@@ -325,11 +317,18 @@
         loadData();
     };
 
+    // ▼▼▼ 修正箇所：予約削除ボタン（赤）の挙動を安全なものに変更 ▼▼▼
+    // ※「行削除(deleteRow)」ではなく「キャンセル(cancelStatus)」を呼ぶように変更しました
     document.getElementById('btnDeleteRow').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから削除したい人を選んでください"); return; }
-        if(!confirm(`⚠️【重要】\n${selectedCustomerName} 様の予約データ自体を完全に削除しますか？\n（スプレッドシートの行が消えます）`)) return;
-        await callApi("deleteRow", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnDeleteRow", "完全削除中...");
-        alert("削除しました！");
+        
+        // メッセージを安全な内容に変更
+        if(!confirm(`【予約削除】\n${selectedCustomerName} 様の予約を削除しますか？\n\n※スプレッドシートのデータは残ります。\n※カレンダーからは削除され、ステータスが「キャンセル」になります。`)) return;
+        
+        // ここで APIの "deleteRow" ではなく "cancelStatus" を呼び出します
+        await callApi("cancelStatus", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnDeleteRow", "削除処理中...");
+        
+        alert("削除しました（データは残し、ステータスをキャンセルに変更しました）");
         selectedCustomerName = "";
         loadData();
     };
@@ -413,7 +412,6 @@
     data.forEach(row => {
       const tr = document.createElement('tr'); tr.className = "clickable";
       
-      // ▼▼▼ 追加：ステータス判定（キャンセルを含む場合はグレーアウト） ▼▼▼
       const statusStr = String(row[5] || "");
       if (statusStr.includes("キャンセル")) {
           tr.classList.add("row-canceled");
@@ -425,7 +423,6 @@
       const meetUrl = row[18] ? `<a href="${row[18]}" target="_blank" class="meet-link">📹参加</a>` : "";
       const accountBadge = row[19] ? `<span class="account-badge">${row[19]}</span>` : '<span style="font-size:10px;color:#ddd;">-</span>';
       
-      // ★コピーボタンの追加 (URLがある時だけ表示)
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
 
       tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
@@ -444,11 +441,9 @@
     tbody.appendChild(fragment);
   }
 
-  // ★URLコピー用の関数（アラート付き）
   window.copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
-      // 小さく通知を表示
       const statusEl = document.getElementById("status");
       statusEl.textContent = "リンクをコピーしました！📋";
       setTimeout(() => statusEl.textContent = "", 2000);
