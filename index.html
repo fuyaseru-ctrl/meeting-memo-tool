@@ -54,10 +54,36 @@
     .meet-link:hover { background: #bfdbfe; }
     .account-badge { font-size: 11px; color: #666; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; display: inline-block; }
     
-    /* ★コピーボタンのスタイル */
+    /* コピーボタンのスタイル */
     .copy-link-btn { padding: 4px 8px; background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 14px; }
     .copy-link-btn:hover { background: #e5e7eb; }
     .copy-link-btn:active { background: #d1d5db; }
+
+    /* キャンセル行のデザイン */
+    tr.row-canceled {
+        background-color: #f3f4f6 !important; /* 背景グレー */
+        color: #a3a3a3 !important;             /* 文字色を薄く */
+        text-decoration: line-through;         /* 打消し線 */
+    }
+    tr.row-canceled a,
+    tr.row-canceled button,
+    tr.row-canceled select { /* セレクトボックスも薄く */
+        opacity: 0.5;
+        /* pointer-events: none; 必要に応じて有効化 */
+    }
+
+    /* ▼▼▼ 追加：テーブル内の面談方式プルダウンのスタイル ▼▼▼ */
+    .method-select {
+        padding: 4px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 12px;
+        background: #fff;
+        color: #333;
+        cursor: pointer;
+    }
+    /* クリックイベントを親のtrに伝播させないためのハック */
+    .method-select:hover { border-color: #aaa; }
 
     /* --- Box --- */
     .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; }
@@ -78,19 +104,6 @@
     .status { margin-top: 8px; font-size: 12px; color: #0f766e; min-height: 16px; }
     #selectedNameDisplay { font-size:12px; color:#666; position:absolute; top:20px; right:20px; font-weight:bold; }
     .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
-
-    /* ▼▼▼ 追加：キャンセル行のデザイン ▼▼▼ */
-    tr.row-canceled {
-        background-color: #f3f4f6 !important; /* 背景グレー */
-        color: #a3a3a3 !important;             /* 文字色を薄く */
-        text-decoration: line-through;         /* 打消し線 */
-    }
-    /* キャンセル行のリンクやボタンも薄くする */
-    tr.row-canceled a,
-    tr.row-canceled button {
-        opacity: 0.5;
-        text-decoration: none; /* ボタン等の線は消す */
-    }
 
     @media (max-width: 900px) {
         .main-wrapper { flex-direction: column; }
@@ -131,6 +144,7 @@
               <th>時間</th>
               <th>お名前</th>
               <th>ステータス</th>
+              <th>面談方式</th>
               <th>アカウント</th>
               <th>Meet</th>
               <th>コピー</th> </tr>
@@ -168,7 +182,6 @@
       <div class="action-row">
           <button class="primary-sub" id="btnCreateSingle">🔗 個別リンク発行</button>
           <button style="background:#f59e0b; color:#fff;" id="btnCancelStatus">🚫 キャンセル</button>
-          
           <button class="danger" id="btnDeleteSingle">🗑️ リンク削除</button>
       </div>
       
@@ -195,6 +208,16 @@
         <option>キャンセル</option>
         <option>予約確定（手動追加）</option>
       </select>
+      
+      <label>面談方式</label>
+      <select id="addMethod">
+        <option>Google Meet</option>
+        <option>電話</option>
+        <option>LINE</option>
+        <option>メール</option>
+        <option>その他</option>
+      </select>
+
       <button class="add-btn" id="btnAddManual" style="margin-top:20px;">＋ 予約を追加する</button>
     </div>
 
@@ -222,6 +245,8 @@
   const addTimeEl = document.getElementById("addTime");
   const addNameEl = document.getElementById("addName");
   const addStatusEl = document.getElementById("addStatus");
+  // 追加
+  const addMethodEl = document.getElementById("addMethod");
 
   function init() { buildTimes(); setToday(); renderPreview(); loadData(); setupEvents(); }
 
@@ -290,7 +315,6 @@
         await callApi("createSingle", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnCreateSingle", "発行中...");
     };
     
-    // --- オレンジ色のキャンセルボタンの動作 ---
     document.getElementById('btnCancelStatus').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから人を選んでください"); return; }
         if(!confirm(`【ステータス変更】\n${selectedCustomerName} 様の予約を「キャンセル」にしますか？\n\n・カレンダーの予定は削除されます\n・スプシの行とMeet履歴は残ります\n・ステータスが「キャンセル」になります`)) return;
@@ -309,25 +333,30 @@
         const t = addTimeEl.value;
         const n = addNameEl.value;
         const s = addStatusEl.value;
+        // 追加：面談方式
+        const m = addMethodEl.value;
+
         if(!d || !n) { alert("日付とお名前は必須です"); return; }
-        if(!confirm(`${d} ${t}時～\n${n} 様\n\nこの内容で予約を追加しますか？`)) return;
+        if(!confirm(`${d} ${t}時～\n${n} 様\nステータス: ${s}\n面談方式: ${m}\n\nこの内容で予約を追加しますか？`)) return;
+        
+        // ★ここ重要：APIを呼ぶ前にローカルストレージに面談方式を保存
+        // 日付形式を yyyy.MM.dd に、時間は HH:mm に整形してキーにする必要があるが、
+        // 単純化のため、ユーザー入力値を加工して保存する
+        const formattedDate = d.replace(/-/g, '.');
+        const formattedTime = (t.length === 1 ? '0' + t : t) + ":00";
+        const key = `method_${formattedDate}_${formattedTime}_${n}`;
+        localStorage.setItem(key, m);
+
         await callApi("manualAdd", { date: d, time: t + ":00", name: n, status: s }, "btnAddManual", "追加中...");
         addNameEl.value = "";
         alert("追加しました！リストを更新します。");
         loadData();
     };
 
-    // ▼▼▼ 修正箇所：予約削除ボタン（赤）の挙動を安全なものに変更 ▼▼▼
-    // ※「行削除(deleteRow)」ではなく「キャンセル(cancelStatus)」を呼ぶように変更しました
     document.getElementById('btnDeleteRow').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから削除したい人を選んでください"); return; }
-        
-        // メッセージを安全な内容に変更
         if(!confirm(`【予約削除】\n${selectedCustomerName} 様の予約を削除しますか？\n\n※スプレッドシートのデータは残ります。\n※カレンダーからは削除され、ステータスが「キャンセル」になります。`)) return;
-        
-        // ここで APIの "deleteRow" ではなく "cancelStatus" を呼び出します
         await callApi("cancelStatus", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnDeleteRow", "削除処理中...");
-        
         alert("削除しました（データは残し、ステータスをキャンセルに変更しました）");
         selectedCustomerName = "";
         loadData();
@@ -391,7 +420,7 @@
   function renderList(data, isFiltered=false) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = "";
-    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
+    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='8' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
     
     const fragment = document.createDocumentFragment();
     
@@ -425,7 +454,21 @@
       
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
 
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
+      // ▼▼▼ 追加：面談方式のプルダウン生成ロジック ▼▼▼
+      // キーを作成: method_YYYY.MM.DD_HH:mm_Name
+      const methodKey = `method_${row[2]}_${row[3]}_${name}`;
+      // ローカルストレージから取得（なければGoogle Meetをデフォルトに）
+      const savedMethod = localStorage.getItem(methodKey) || "Google Meet";
+      
+      const methodOptions = ["Google Meet", "電話", "LINE", "メール", "その他"];
+      let methodSelectHtml = `<select class="method-select" onclick="event.stopPropagation()" onchange="updateMethod('${methodKey}', this.value)">`;
+      methodOptions.forEach(opt => {
+          methodSelectHtml += `<option ${opt === savedMethod ? 'selected' : ''}>${opt}</option>`;
+      });
+      methodSelectHtml += `</select>`;
+      // ▲▲▲ 追加終わり ▲▲▲
+
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${methodSelectHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
@@ -433,6 +476,12 @@
         if(row[3]) timeEl.value = String(parseInt(row[3]));
         selectedCustomerName = name;
         nameDisplay.textContent = `選択中: ${name}`;
+        
+        // 選択時に面談メモ生成ツールのプルダウンも同期させる
+        const currentMethod = localStorage.getItem(methodKey) || "Google Meet";
+        const methodEl = document.getElementById("method");
+        methodEl.value = currentMethod;
+
         renderPreview();
         if(window.innerWidth < 600) document.getElementById('toolBox').scrollIntoView({behavior:"smooth"});
       };
@@ -440,6 +489,19 @@
     });
     tbody.appendChild(fragment);
   }
+
+  // ▼▼▼ 追加：面談方式を保存するグローバル関数 ▼▼▼
+  window.updateMethod = (key, value) => {
+      localStorage.setItem(key, value);
+      // メモ生成側のプルダウンも連動して変更する
+      const methodEl = document.getElementById("method");
+      methodEl.value = value;
+      // プレビュー更新
+      const previewEl = document.getElementById("preview");
+      // renderPreview() はスコープ外なので簡易的にイベント発火
+      const event = new Event('change');
+      methodEl.dispatchEvent(event);
+  };
 
   window.copyToClipboard = async (text) => {
     try {
