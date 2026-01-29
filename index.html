@@ -54,16 +54,20 @@
     .meet-link:hover { background: #bfdbfe; }
     .account-badge { font-size: 11px; color: #666; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; display: inline-block; }
     
-    /* コピーボタンのスタイル */
+    /* コピーボタン */
     .copy-link-btn { padding: 4px 8px; background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 14px; }
     .copy-link-btn:hover { background: #e5e7eb; }
     .copy-link-btn:active { background: #d1d5db; }
 
-    /* キャンセル行のデザイン */
+    /* 入金ボタン */
+    .payment-btn { padding: 4px 8px; background: #fffbeb; border: 1px solid #fcd34d; color: #b45309; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; }
+    .payment-btn:hover { background: #fef3c7; }
+
+    /* キャンセル行 */
     tr.row-canceled {
-        background-color: #f3f4f6 !important; /* 背景グレー */
-        color: #a3a3a3 !important;             /* 文字色を薄く */
-        text-decoration: line-through;         /* 打消し線 */
+        background-color: #f3f4f6 !important; 
+        color: #a3a3a3 !important;             
+        text-decoration: line-through;         
     }
     tr.row-canceled a,
     tr.row-canceled button,
@@ -71,7 +75,16 @@
         opacity: 0.5;
     }
 
-    /* テーブル内の面談方式プルダウンのスタイル */
+    /* ★入金済み行（ゴールド） */
+    tr.row-paid {
+        background-color: #fffbeb !important; /* 薄いゴールド */
+        color: #92400e !important;
+    }
+    tr.row-paid td {
+        border-bottom-color: #fcd34d !important;
+    }
+
+    /* 面談方式プルダウン */
     .method-select {
         padding: 4px;
         border: 1px solid #ddd;
@@ -145,7 +158,8 @@
               <th>面談方式</th>
               <th>アカウント</th>
               <th>Meet</th>
-              <th>コピー</th> </tr>
+              <th>コピー</th>
+              <th>入金</th> </tr>
           </thead>
           <tbody id="tableBody"></tbody>
         </table>
@@ -197,8 +211,7 @@
       <label>ステータス</label>
       <select id="addStatus">
         <option>予約確定</option>
-        <option>初回面談</option>
-        <option>1ヵ月面談</option>
+        <option>初回面談</option> <option>1ヵ月面談</option>
         <option>2ヵ月面談</option>
         <option>3ヵ月面談</option>
         <option>4ヵ月面談</option>
@@ -267,14 +280,13 @@
   }
 
   function setupEvents() {
-    // ▼▼▼ 修正：月移動バグ（月末に移動すると月が飛ぶ問題）の修正 ▼▼▼
     document.getElementById('prevMonthBtn').onclick = () => { 
-        calDate.setDate(1); // 1日にリセットしてから月移動
+        calDate.setDate(1); 
         calDate.setMonth(calDate.getMonth()-1); 
         renderCalendar(); 
     };
     document.getElementById('nextMonthBtn').onclick = () => { 
-        calDate.setDate(1); // 1日にリセットしてから月移動
+        calDate.setDate(1); 
         calDate.setMonth(calDate.getMonth()+1); 
         renderCalendar(); 
     };
@@ -357,25 +369,19 @@
         loadData();
     };
 
-    // ▼▼▼ 修正箇所：予約削除ボタン（赤）の挙動変更 ▼▼▼
     document.getElementById('btnDeleteRow').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから削除したい人を選んでください"); return; }
-        
-        // メッセージを「リストから消す」旨に変更
         if(!confirm(`【予約削除】\n${selectedCustomerName} 様の予約を削除しますか？\n\n・カレンダーの予定は削除されます\n・ツール上のリストから消えます\n・スプレッドシートのデータは「削除」ステータスで残ります`)) return;
         
         const btn = document.getElementById("btnDeleteRow");
         btn.textContent = "削除処理中..."; btn.disabled = true;
 
         try {
-            // 1. カレンダー削除＆キャンセル化
             await fetch(API_URL, { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "cancelStatus", date: dateEl.value, time: timeEl.value, name: selectedCustomerName }) 
             });
-
-            // 2. ステータスを「削除」に上書き（これでリストから非表示になる）
-            await new Promise(r => setTimeout(r, 500)); // 念のため少し待機
+            await new Promise(r => setTimeout(r, 500)); 
             const response = await fetch(API_URL, { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "updateStatus", date: dateEl.value, time: timeEl.value, name: selectedCustomerName, newStatus: "削除" }) 
@@ -392,16 +398,27 @@
     };
   }
 
+  // ★入金切り替え処理
+  window.togglePayment = async (date, time, name) => {
+      if (!confirm(`${name} 様の入金ステータスを切り替えますか？`)) return;
+      await callApi("togglePayment", { date: date, time: time, name: name }, "null", "切替中...");
+  };
+
   async function callApi(action, params, btnId, loadingText) {
-    const btn = document.getElementById(btnId);
-    const originalText = btn.textContent;
-    btn.textContent = loadingText; btn.disabled = true;
+    let btn = null;
+    let originalText = "";
+    if (btnId !== "null") {
+        btn = document.getElementById(btnId);
+        originalText = btn.textContent;
+        btn.textContent = loadingText; btn.disabled = true;
+    }
+    
     try {
         const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: action, ...params }) });
         const result = await response.json();
         if(action !== "manualAdd" && action !== "deleteRow") { alert(result.message); loadData(); }
     } catch(e) { alert("エラー: " + e.message); } 
-    finally { btn.textContent = originalText; btn.disabled = false; }
+    finally { if(btn) { btn.textContent = originalText; btn.disabled = false; } }
   }
 
   function loadData() {
@@ -449,7 +466,7 @@
   function renderList(data, isFiltered=false) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = "";
-    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='8' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
+    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='9' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
     
     const fragment = document.createDocumentFragment();
     
@@ -468,14 +485,19 @@
     }
 
     data.forEach(row => {
-      // ▼▼▼ 修正：ステータスが「削除」のものはリストに表示しない ▼▼▼
       const statusStr = String(row[5] || "");
       if (statusStr === "削除") return;
 
       const tr = document.createElement('tr'); tr.className = "clickable";
       
+      // キャンセル
       if (statusStr.includes("キャンセル")) {
           tr.classList.add("row-canceled");
+      }
+      // ★入金済み（20列目=U列 が "済"）
+      const isPaid = row[20] === "済"; 
+      if (isPaid) {
+          tr.classList.add("row-paid");
       }
 
       const name = row[12]||row[6]||"なし";
@@ -485,6 +507,9 @@
       const accountBadge = row[19] ? `<span class="account-badge">${row[19]}</span>` : '<span style="font-size:10px;color:#ddd;">-</span>';
       
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
+      
+      // ★入金ボタン
+      const payBtn = `<button class="payment-btn" onclick="event.stopPropagation(); togglePayment('${row[2]}', '${row[3]}', '${name}')">💰</button>`;
 
       const methodKey = `method_${row[2]}_${row[3]}_${name}`;
       const savedMethod = localStorage.getItem(methodKey) || "Google Meet";
@@ -495,7 +520,8 @@
       });
       methodSelectHtml += `</select>`;
 
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${methodSelectHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
+      // カラム追加: payBtn を最後に追加
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${methodSelectHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td><td>${payBtn}</td>`;
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
