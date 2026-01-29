@@ -93,16 +93,34 @@
     }
     .common-select:hover { border-color: #aaa; }
 
-    /* 入金件数表示エリア */
+    /* 入金件数表示エリア（拡張） */
     .payment-summary-box {
         margin-top: 15px;
-        padding: 10px;
+        padding: 15px;
         background-color: #fffbeb;
         border: 1px solid #fcd34d;
         border-radius: 8px;
         color: #92400e;
-        font-weight: bold;
         text-align: center;
+    }
+    .payment-total-title {
+        font-size: 1.1em;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+    .payment-detail-list {
+        font-size: 13px;
+        text-align: left;
+        display: inline-block; /* 中央揃えの中に左揃えのブロックを作る */
+        line-height: 1.6;
+        width: 100%;
+        max-width: 220px;
+        border-top: 1px dashed #fcd34d;
+        padding-top: 8px;
+    }
+    .payment-row {
+        display: flex;
+        justify-content: space-between;
     }
 
     /* --- Box --- */
@@ -168,7 +186,8 @@
               <th>アカウント</th>
               <th>Meet</th>
               <th>コピー</th>
-              <th>入金</th> </tr>
+              <th>入金</th>
+            </tr>
           </thead>
           <tbody id="tableBody"></tbody>
         </table>
@@ -243,7 +262,8 @@
       <button class="add-btn" id="btnAddManual" style="margin-top:20px;">＋ 予約を追加する</button>
       
       <div id="paymentSummaryBox" class="payment-summary-box">
-          💰 合計入金件数：集計中...
+          <div class="payment-total-title">💰 合計入金件数：集計中...</div>
+          <div id="paymentDetailList" class="payment-detail-list"></div>
       </div>
     </div>
 
@@ -273,7 +293,8 @@
   const addStatusEl = document.getElementById("addStatus");
   const addMethodEl = document.getElementById("addMethod");
   // 追加
-  const paymentSummaryEl = document.getElementById("paymentSummaryBox");
+  const paymentSummaryBox = document.getElementById("paymentSummaryBox");
+  const paymentDetailList = document.getElementById("paymentDetailList");
 
   function init() { buildTimes(); setToday(); renderPreview(); loadData(); setupEvents(); }
 
@@ -414,10 +435,8 @@
     };
   }
 
-  // ★入金情報更新処理（プルダウン変更時）
+  // 入金情報更新
   window.updatePayment = async (date, time, name, value) => {
-      // 確認なしで即反映させる場合はconfirmを削除してください
-      // if (!confirm(`${name} 様の入金情報を「${value || "未入金"}」に変更しますか？`)) return;
       await callApi("updatePayment", { date: date, time: time, name: name, method: value }, "null", "更新中...");
   };
 
@@ -443,14 +462,36 @@
     fetch(API_URL).then(res => res.json()).then(data => {
         allData = data;
         
-        // ★入金件数の集計
-        // 20番目(index 20 = U列)が空でないデータの数を数える（削除ステータスは除く）
-        const paidCount = allData.filter(row => {
+        // ▼▼▼ 集計ロジック追加 ▼▼▼
+        let totalPaid = 0;
+        const counts = {};
+        
+        allData.forEach(row => {
             const status = String(row[5] || "");
             const payment = String(row[20] || "").trim();
-            return status !== "削除" && payment !== "";
-        }).length;
-        paymentSummaryEl.textContent = `💰 合計入金件数：${paidCount} 件`;
+            
+            // 削除ステータス除外、支払い方法が空でないものだけ集計
+            if (status !== "削除" && payment !== "") {
+                totalPaid++;
+                counts[payment] = (counts[payment] || 0) + 1;
+            }
+        });
+
+        // 合計表示
+        const titleEl = document.querySelector(".payment-total-title");
+        titleEl.textContent = `💰 合計入金件数：${totalPaid} 件`;
+
+        // 内訳表示
+        let detailHtml = "";
+        if (totalPaid > 0) {
+            for (const [key, val] of Object.entries(counts)) {
+                detailHtml += `<div class="payment-row"><span>${key}</span><span><b>${val}</b> 件</span></div>`;
+            }
+        } else {
+            detailHtml = "<div style='text-align:center; color:#999;'>（まだありません）</div>";
+        }
+        paymentDetailList.innerHTML = detailHtml;
+        // ▲▲▲ 集計終了 ▲▲▲
 
         if (currentSelectedDateStr) filterListByDate(currentSelectedDateStr);
         else renderList(sortDataByDateDesc(allData)); 
@@ -522,10 +563,10 @@
           tr.classList.add("row-canceled");
       }
       
-      // ★入金状態の取得 (20番目=U列)
+      // 入金済み
       const paymentVal = String(row[20] || "").trim();
       if (paymentVal !== "") {
-          tr.classList.add("row-paid"); // 入金済みなら金色に
+          tr.classList.add("row-paid");
       }
 
       const name = row[12]||row[6]||"なし";
@@ -536,7 +577,7 @@
       
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
       
-      // ★入金プルダウン生成
+      // 入金プルダウン
       const paymentOptions = [
           { val: "", label: "未" },
           { val: "銀振一括", label: "💰 銀振一括" },
