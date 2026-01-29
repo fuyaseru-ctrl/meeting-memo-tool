@@ -79,6 +79,19 @@
     #selectedNameDisplay { font-size:12px; color:#666; position:absolute; top:20px; right:20px; font-weight:bold; }
     .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
 
+    /* ▼▼▼ 追加：キャンセル行のデザイン ▼▼▼ */
+    tr.row-canceled {
+        background-color: #f3f4f6 !important; /* 背景グレー */
+        color: #a3a3a3 !important;             /* 文字色を薄く */
+        text-decoration: line-through;         /* 打消し線 */
+    }
+    /* キャンセル行のリンクやボタンも薄くする */
+    tr.row-canceled a,
+    tr.row-canceled button {
+        opacity: 0.5;
+        text-decoration: none; /* ボタン等の線は消す */
+    }
+
     @media (max-width: 900px) {
         .main-wrapper { flex-direction: column; }
         .left-column, .right-column { min-width: 100%; flex: auto; }
@@ -154,6 +167,8 @@
 
       <div class="action-row">
           <button class="primary-sub" id="btnCreateSingle">🔗 個別リンク発行</button>
+          <button style="background:#f59e0b; color:#fff;" id="btnCancelStatus">🚫 キャンセル</button>
+          
           <button class="danger" id="btnDeleteSingle">🗑️ リンク削除</button>
       </div>
       <button class="delete-row-btn" id="btnDeleteRow">❌ 予約自体を削除（スプシから消す）</button>
@@ -273,6 +288,24 @@
         if(!confirm(`【個別発行】\n${selectedCustomerName} 様のリンクを発行しますか？`)) return;
         await callApi("createSingle", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnCreateSingle", "発行中...");
     };
+    
+    // ▼▼▼ 追加：キャンセルボタンの動作 ▼▼▼
+    document.getElementById('btnCancelStatus').onclick = async () => {
+        if(!selectedCustomerName) { alert("リストから人を選んでください"); return; }
+        
+        // 確認ダイアログ
+        if(!confirm(`【ステータス変更】\n${selectedCustomerName} 様の予約を「キャンセル」にしますか？\n\n・カレンダーの予定は削除されます\n・スプシの行とMeet履歴は残ります\n・ステータスが「キャンセル」になります`)) return;
+
+        // API呼び出し (GASの executeCancelStatus を実行)
+        await callApi("cancelStatus", { 
+            date: dateEl.value, 
+            time: timeEl.value, 
+            name: selectedCustomerName 
+        }, "btnCancelStatus", "キャンセル処理中...");
+        
+        alert("処理完了：ステータスをキャンセルに変更しました");
+    };
+
     document.getElementById('btnDeleteSingle').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから人を選んでください"); return; }
         if(!confirm(`【個別削除】\n${selectedCustomerName} 様のリンクを削除しますか？`)) return;
@@ -379,6 +412,13 @@
 
     data.forEach(row => {
       const tr = document.createElement('tr'); tr.className = "clickable";
+      
+      // ▼▼▼ 追加：ステータス判定（キャンセルを含む場合はグレーアウト） ▼▼▼
+      const statusStr = String(row[5] || "");
+      if (statusStr.includes("キャンセル")) {
+          tr.classList.add("row-canceled");
+      }
+
       const name = row[12]||row[6]||"なし";
       if(highlight && hTime && row[3]===hTime) tr.classList.add("highlight-next");
       
