@@ -266,8 +266,18 @@
   }
 
   function setupEvents() {
-    document.getElementById('prevMonthBtn').onclick = () => { calDate.setMonth(calDate.getMonth()-1); renderCalendar(); };
-    document.getElementById('nextMonthBtn').onclick = () => { calDate.setMonth(calDate.getMonth()+1); renderCalendar(); };
+    // ▼▼▼ 修正：月移動バグ（月末に移動すると月が飛ぶ問題）の修正 ▼▼▼
+    document.getElementById('prevMonthBtn').onclick = () => { 
+        calDate.setDate(1); // 1日にリセットしてから月移動
+        calDate.setMonth(calDate.getMonth()-1); 
+        renderCalendar(); 
+    };
+    document.getElementById('nextMonthBtn').onclick = () => { 
+        calDate.setDate(1); // 1日にリセットしてから月移動
+        calDate.setMonth(calDate.getMonth()+1); 
+        renderCalendar(); 
+    };
+    
     document.getElementById('btnTodayReset').onclick = () => {
         calDate = new Date();
         const todayStr = `${calDate.getFullYear()}.${('0'+(calDate.getMonth()+1)).slice(-2)}.${('0'+calDate.getDate()).slice(-2)}`;
@@ -350,22 +360,21 @@
     document.getElementById('btnDeleteRow').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから削除したい人を選んでください"); return; }
         
-        // シンプルな確認メッセージ
-        if(!confirm(`【予約削除】\n${selectedCustomerName} 様の予約を削除しますか？\n（スプレッドシートのデータは残ります）`)) return;
+        // メッセージを「リストから消す」旨に変更
+        if(!confirm(`【予約削除】\n${selectedCustomerName} 様の予約を削除しますか？\n\n・カレンダーの予定は削除されます\n・ツール上のリストから消えます\n・スプレッドシートのデータは「削除」ステータスで残ります`)) return;
         
         const btn = document.getElementById("btnDeleteRow");
         btn.textContent = "削除処理中..."; btn.disabled = true;
 
         try {
-            // 1. まずcancelStatusを呼んで「カレンダー削除」と「ステータス=キャンセル」にする
+            // 1. カレンダー削除＆キャンセル化
             await fetch(API_URL, { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "cancelStatus", date: dateEl.value, time: timeEl.value, name: selectedCustomerName }) 
             });
 
-            // 2. 次にupdateStatusを呼んで「ステータス=削除」に上書きする（これでリストから消える）
-            //    ※少し待機してから実行することで競合を防ぐ（念のため）
-            await new Promise(r => setTimeout(r, 500));
+            // 2. ステータスを「削除」に上書き（これでリストから非表示になる）
+            await new Promise(r => setTimeout(r, 500)); // 念のため少し待機
             const response = await fetch(API_URL, { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "updateStatus", date: dateEl.value, time: timeEl.value, name: selectedCustomerName, newStatus: "削除" }) 
@@ -458,7 +467,7 @@
     }
 
     data.forEach(row => {
-      // ▼▼▼ 追加：ステータスが「削除」のものは表示しない ▼▼▼
+      // ▼▼▼ 修正：ステータスが「削除」のものはリストに表示しない ▼▼▼
       const statusStr = String(row[5] || "");
       if (statusStr === "削除") return;
 
