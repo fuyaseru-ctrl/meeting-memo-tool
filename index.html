@@ -63,6 +63,10 @@
     tr.row-cancelled td { text-decoration: line-through; color: #9ca3af; }
     tr.row-cancelled .meet-link, tr.row-cancelled .copy-link-btn { text-decoration: none; opacity: 0.6; }
 
+    /* ★リスト内のプルダウン装飾 */
+    .method-select { border: 1px solid #ddd; padding: 2px; border-radius: 4px; font-size: 12px; background: #f9fafb; cursor: pointer; }
+    .method-select:hover { background: #fff; border-color: #aaa; }
+
     /* --- Box --- */
     .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; }
     h1 { font-size: 18px; margin: 0 0 16px; display:flex; align-items:center; gap:8px; }
@@ -124,7 +128,7 @@
               <th>時間</th>
               <th>お名前</th>
               <th>ステータス</th>
-              <th>方式</th> <th>アカウント</th>
+              <th>面談方式</th> <th>アカウント</th>
               <th>Meet</th>
               <th>コピー</th>
             </tr>
@@ -210,6 +214,7 @@
       <select id="addMethod">
         <option>Google Meet</option>
         <option>電話</option>
+        <option>LINE</option>
         <option>その他</option>
       </select>
 
@@ -242,7 +247,7 @@
   const addTimeEl = document.getElementById("addTime");
   const addNameEl = document.getElementById("addName");
   const addStatusEl = document.getElementById("addStatus");
-  const addMethodEl = document.getElementById("addMethod"); // ★追加
+  const addMethodEl = document.getElementById("addMethod");
 
   function init() { buildTimes(); setToday(); renderPreview(); loadData(); setupEvents(); }
 
@@ -321,7 +326,7 @@
         const t = addTimeEl.value;
         const n = addNameEl.value;
         const s = addStatusEl.value;
-        const m = addMethodEl.value; // ★面談方式
+        const m = addMethodEl.value; // 面談方式
         if(!d || !n) { alert("日付とお名前は必須です"); return; }
         if(!confirm(`${d} ${t}時～\n${n} 様\n方式：${m}\n\nこの内容で予約を追加しますか？`)) return;
         await callApi("manualAdd", { date: d, time: t + ":00", name: n, status: s, method: m }, "btnAddManual", "追加中...");
@@ -348,16 +353,44 @@
     };
   }
 
+  // ★リストから面談方式を変更する関数
+  window.updateListMethod = async (selectEl, date, time, name) => {
+    const newMethod = selectEl.value;
+    // UI上のフィードバック（一時的に無効化）
+    selectEl.disabled = true;
+    try {
+        await callApi("updateMethod", { date: date, time: time, name: name, newMethod: newMethod }, null, null);
+        // 成功通知はcallApi内で処理（画面リロード）
+    } catch(e) {
+        alert("変更に失敗しました");
+        selectEl.disabled = false;
+    }
+  };
+
   async function callApi(action, params, btnId, loadingText) {
-    const btn = document.getElementById(btnId);
-    const originalText = btn.textContent;
-    btn.textContent = loadingText; btn.disabled = true;
+    let btn = null;
+    let originalText = "";
+    if (btnId) {
+        btn = document.getElementById(btnId);
+        originalText = btn.textContent;
+        btn.textContent = loadingText; btn.disabled = true;
+    }
     try {
         const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: action, ...params }) });
         const result = await response.json();
-        if(action !== "manualAdd" && action !== "cancelStatus" && action !== "updateStatus") { alert(result.message); loadData(); }
+        // 手動追加などの場合以外でも、リスト更新時はリロードする
+        if(action !== "manualAdd") { 
+            // 方式変更の時だけアラートを出さずに静かにリロードする手もあるが、確実性のためアラート出すか検討
+            // 今回はアラート出して更新
+            if(action !== "updateMethod") alert(result.message); 
+            loadData(); 
+        } else {
+            // manualAddの時は個別にアラート出してるのでここでは何もしない
+        }
     } catch(e) { alert("エラー: " + e.message); } 
-    finally { btn.textContent = originalText; btn.disabled = false; }
+    finally { 
+        if (btn) { btn.textContent = originalText; btn.disabled = false; } 
+    }
   }
 
   function loadData() {
@@ -428,7 +461,7 @@
       const name = row[12]||row[6]||"なし";
       const status = row[5] || ""; 
       
-      // ★面談方式の取得（データが無ければGoogle Meetと表示）
+      // ★面談方式（なければGoogle Meet）
       const methodVal = row[6] || "Google Meet";
 
       if(highlight && hTime && row[3]===hTime) tr.classList.add("highlight-next");
@@ -448,7 +481,15 @@
       const accountBadge = row[19] ? `<span class="account-badge">${row[19]}</span>` : '<span style="font-size:10px;color:#ddd;">-</span>';
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
 
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${statusHtml}</td><td>${methodVal}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
+      // ★プルダウン作成
+      // onclick="event.stopPropagation()" で、行クリック時の詳細表示イベントを止める
+      const options = ["Google Meet", "電話", "LINE", "その他"].map(opt => 
+        `<option value="${opt}" ${opt === methodVal ? "selected" : ""}>${opt}</option>`
+      ).join("");
+      
+      const methodSelect = `<select class="method-select" onclick="event.stopPropagation()" onchange="updateListMethod(this, '${row[2]}', '${row[3]}', '${name}')">${options}</select>`;
+
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${statusHtml}</td><td>${methodSelect}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
       
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
