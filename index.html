@@ -37,6 +37,11 @@
     #btnGenerateMeetForDate { background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; }
     #btnDeleteDayBatch { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; font-weight: bold; margin-left: auto; }
 
+    /* ★人数選択用のエリア */
+    .staff-setting-area { display:flex; align-items:center; gap:10px; background:#f0f9ff; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #bae6fd; }
+    .staff-setting-area label { margin:0; font-weight:bold; color:#0369a1; font-size:14px; }
+    .staff-setting-area select { width:auto; margin:0; padding:6px; font-weight:bold; }
+
     .search-area { margin-bottom: 10px; }
     .search-area input { margin-top: 0; }
     .table-wrapper { max-height: 500px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
@@ -78,7 +83,6 @@
     button.add-btn { background: #10b981; }
     button.cancel-status-btn { background: #6b7280; color: #fff; margin-top: 10px; }
     
-    /* ★編集エリア用（下部に移動のためスタイル調整） */
     .edit-status-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
     .edit-status-row button { width: auto; background: #0891b2; font-size: 13px; padding: 10px 16px;}
     
@@ -107,6 +111,18 @@
       </div>
       <div class="calendar-grid" id="calendarGrid"></div>
       
+      <div class="staff-setting-area">
+        <label>稼働人数：</label>
+        <select id="staffCountSelector">
+            <option value="2">2名 (A,B)</option>
+            <option value="3">3名 (A~C)</option>
+            <option value="4">4名 (A~D)</option>
+            <option value="5">5名 (A~E)</option>
+            <option value="6" selected>6名 (A~F)</option>
+            </select>
+        <span style="font-size:11px; color:#666;">※選択した人数内で自動割振します</span>
+      </div>
+
       <div class="controls-area">
           <button class="btn-sub" id="btnTodayReset">今日に戻る</button>
           <button class="btn-sub" id="btnShowAll">リスト全表示</button>
@@ -231,6 +247,7 @@
   const nameDisplay = document.getElementById("selectedNameDisplay");
   
   const editStatusEl = document.getElementById("editStatus"); 
+  const staffCountSelector = document.getElementById("staffCountSelector"); // ★追加
 
   const addDateEl = document.getElementById("addDate");
   const addTimeEl = document.getElementById("addTime");
@@ -284,14 +301,16 @@
     };
 
     document.getElementById('btnGenerateMeet').onclick = async () => {
-        if(!confirm("【全データ対象】\n未発行の予約に対して、Meetリンクを一括発行しますか？")) return;
-        await callApi("generateLinks", {}, "btnGenerateMeet", "全発行中...");
+        const sc = staffCountSelector.value;
+        if(!confirm(`【全データ対象】\n未発行の予約に対して、Meetリンクを一括発行しますか？\n（稼働人数: ${sc}名）`)) return;
+        await callApi("generateLinks", { staffCount: sc }, "btnGenerateMeet", "全発行中...");
     };
     document.getElementById('btnGenerateMeetForDate').onclick = async () => {
         if(!currentSelectedDateStr) { alert("カレンダーから日付を選んでください"); return; }
         const formattedDate = currentSelectedDateStr.replace(/\./g, '-');
-        if(!confirm(`【${formattedDate} のみ対象】\nこの日の未発行予約に対して、Meetリンクを一括発行しますか？`)) return;
-        await callApi("generateLinksForDate", { date: formattedDate }, "btnGenerateMeetForDate", "発行中...");
+        const sc = staffCountSelector.value;
+        if(!confirm(`【${formattedDate} のみ対象】\nこの日の未発行予約に対して、Meetリンクを一括発行しますか？\n（稼働人数: ${sc}名）`)) return;
+        await callApi("generateLinksForDate", { date: formattedDate, staffCount: sc }, "btnGenerateMeetForDate", "発行中...");
     };
     document.getElementById('btnDeleteDayBatch').onclick = async () => {
         if(!currentSelectedDateStr) { alert("カレンダーから削除したい日付を選んでください"); return; }
@@ -300,8 +319,9 @@
     };
     document.getElementById('btnCreateSingle').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから人を選んでください"); return; }
-        if(!confirm(`【個別発行】\n${selectedCustomerName} 様のリンクを発行しますか？`)) return;
-        await callApi("createSingle", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnCreateSingle", "発行中...");
+        const sc = staffCountSelector.value;
+        if(!confirm(`【個別発行】\n${selectedCustomerName} 様のリンクを発行しますか？\n（稼働人数: ${sc}名の中から選定）`)) return;
+        await callApi("createSingle", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName, staffCount: sc }, "btnCreateSingle", "発行中...");
     };
     document.getElementById('btnDeleteSingle').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから人を選んでください"); return; }
@@ -330,7 +350,6 @@
         loadData();
     };
 
-    // ★ステータス更新ボタン
     document.getElementById('btnUpdateStatus').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから人を選んでください"); return; }
         const newStat = editStatusEl.value;
@@ -436,9 +455,16 @@
 
       const meetUrl = row[18] ? `<a href="${row[18]}" target="_blank" class="meet-link">📹参加</a>` : "";
       const accountBadge = row[19] ? `<span class="account-badge">${row[19]}</span>` : '<span style="font-size:10px;color:#ddd;">-</span>';
+      
+      // ★担当者名をバッジの中に表示（数字の「〇号」の代わりに名前が入る）
+      // GAS側でCOL_STAFF(J列)にも名前を書くようにしたが、表示はCOL_ACCOUNT(T列)やCOL_STAFF(J列)どちらでも良い
+      // 今回はJ列(index9)を表示するように変更
+      const staffName = row[9] || "-";
+      const staffBadge = `<span class="account-badge" style="background:#e0e7ff;color:#3730a3">${staffName}</span>`;
+
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
 
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${statusHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${statusHtml}</td><td>${staffBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
       
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
@@ -447,9 +473,7 @@
         if(row[3]) timeEl.value = String(parseInt(row[3]));
         selectedCustomerName = name;
         nameDisplay.textContent = `選択中: ${name}`;
-        
         editStatusEl.value = status || "予約確定";
-
         renderPreview();
         if(window.innerWidth < 600) document.getElementById('toolBox').scrollIntoView({behavior:"smooth"});
       };
