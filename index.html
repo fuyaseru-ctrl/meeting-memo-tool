@@ -59,10 +59,6 @@
     .copy-link-btn:hover { background: #e5e7eb; }
     .copy-link-btn:active { background: #d1d5db; }
 
-    /* 入金ボタン */
-    .payment-btn { padding: 4px 8px; background: #fffbeb; border: 1px solid #fcd34d; color: #b45309; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; }
-    .payment-btn:hover { background: #fef3c7; }
-
     /* キャンセル行 */
     tr.row-canceled {
         background-color: #f3f4f6 !important; 
@@ -84,8 +80,8 @@
         border-bottom-color: #fcd34d !important;
     }
 
-    /* 面談方式プルダウン */
-    .method-select {
+    /* プルダウン共通スタイル */
+    .common-select {
         padding: 4px;
         border: 1px solid #ddd;
         border-radius: 4px;
@@ -93,8 +89,21 @@
         background: #fff;
         color: #333;
         cursor: pointer;
+        max-width: 120px;
     }
-    .method-select:hover { border-color: #aaa; }
+    .common-select:hover { border-color: #aaa; }
+
+    /* 入金件数表示エリア */
+    .payment-summary-box {
+        margin-top: 15px;
+        padding: 10px;
+        background-color: #fffbeb;
+        border: 1px solid #fcd34d;
+        border-radius: 8px;
+        color: #92400e;
+        font-weight: bold;
+        text-align: center;
+    }
 
     /* --- Box --- */
     .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; }
@@ -211,7 +220,8 @@
       <label>ステータス</label>
       <select id="addStatus">
         <option>予約確定</option>
-        <option>初回面談</option> <option>1ヵ月面談</option>
+        <option>初回面談</option>
+        <option>1ヵ月面談</option>
         <option>2ヵ月面談</option>
         <option>3ヵ月面談</option>
         <option>4ヵ月面談</option>
@@ -231,6 +241,10 @@
       </select>
 
       <button class="add-btn" id="btnAddManual" style="margin-top:20px;">＋ 予約を追加する</button>
+      
+      <div id="paymentSummaryBox" class="payment-summary-box">
+          💰 合計入金件数：集計中...
+      </div>
     </div>
 
   </div>
@@ -258,6 +272,8 @@
   const addNameEl = document.getElementById("addName");
   const addStatusEl = document.getElementById("addStatus");
   const addMethodEl = document.getElementById("addMethod");
+  // 追加
+  const paymentSummaryEl = document.getElementById("paymentSummaryBox");
 
   function init() { buildTimes(); setToday(); renderPreview(); loadData(); setupEvents(); }
 
@@ -398,10 +414,11 @@
     };
   }
 
-  // ★入金切り替え処理
-  window.togglePayment = async (date, time, name) => {
-      if (!confirm(`${name} 様の入金ステータスを切り替えますか？`)) return;
-      await callApi("togglePayment", { date: date, time: time, name: name }, "null", "切替中...");
+  // ★入金情報更新処理（プルダウン変更時）
+  window.updatePayment = async (date, time, name, value) => {
+      // 確認なしで即反映させる場合はconfirmを削除してください
+      // if (!confirm(`${name} 様の入金情報を「${value || "未入金"}」に変更しますか？`)) return;
+      await callApi("updatePayment", { date: date, time: time, name: name, method: value }, "null", "更新中...");
   };
 
   async function callApi(action, params, btnId, loadingText) {
@@ -425,6 +442,16 @@
     document.getElementById('loading').style.display = 'block';
     fetch(API_URL).then(res => res.json()).then(data => {
         allData = data;
+        
+        // ★入金件数の集計
+        // 20番目(index 20 = U列)が空でないデータの数を数える（削除ステータスは除く）
+        const paidCount = allData.filter(row => {
+            const status = String(row[5] || "");
+            const payment = String(row[20] || "").trim();
+            return status !== "削除" && payment !== "";
+        }).length;
+        paymentSummaryEl.textContent = `💰 合計入金件数：${paidCount} 件`;
+
         if (currentSelectedDateStr) filterListByDate(currentSelectedDateStr);
         else renderList(sortDataByDateDesc(allData)); 
         renderCalendar();
@@ -494,10 +521,11 @@
       if (statusStr.includes("キャンセル")) {
           tr.classList.add("row-canceled");
       }
-      // ★入金済み（20列目=U列 が "済"）
-      const isPaid = row[20] === "済"; 
-      if (isPaid) {
-          tr.classList.add("row-paid");
+      
+      // ★入金状態の取得 (20番目=U列)
+      const paymentVal = String(row[20] || "").trim();
+      if (paymentVal !== "") {
+          tr.classList.add("row-paid"); // 入金済みなら金色に
       }
 
       const name = row[12]||row[6]||"なし";
@@ -508,20 +536,33 @@
       
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
       
-      // ★入金ボタン
-      const payBtn = `<button class="payment-btn" onclick="event.stopPropagation(); togglePayment('${row[2]}', '${row[3]}', '${name}')">💰</button>`;
+      // ★入金プルダウン生成
+      const paymentOptions = [
+          { val: "", label: "未" },
+          { val: "銀振一括", label: "💰 銀振一括" },
+          { val: "クレカ一括", label: "💳 クレカ一括" },
+          { val: "クレカ分割 12分割", label: "💳 分割12回" },
+          { val: "クレカ分割 24分割", label: "💳 分割24回" },
+          { val: "クレカ分割 36分割", label: "💳 分割36回" }
+      ];
+      let paymentSelectHtml = `<select class="common-select" onclick="event.stopPropagation()" onchange="updatePayment('${row[2]}', '${row[3]}', '${name}', this.value)">`;
+      paymentOptions.forEach(opt => {
+          const isSelected = paymentVal === opt.val ? "selected" : "";
+          paymentSelectHtml += `<option value="${opt.val}" ${isSelected}>${opt.label}</option>`;
+      });
+      paymentSelectHtml += `</select>`;
 
+      // 面談方式プルダウン
       const methodKey = `method_${row[2]}_${row[3]}_${name}`;
       const savedMethod = localStorage.getItem(methodKey) || "Google Meet";
       const methodOptions = ["Google Meet", "電話", "LINE", "メール", "その他"];
-      let methodSelectHtml = `<select class="method-select" onclick="event.stopPropagation()" onchange="updateMethod('${methodKey}', this.value)">`;
+      let methodSelectHtml = `<select class="common-select" onclick="event.stopPropagation()" onchange="updateMethod('${methodKey}', this.value)">`;
       methodOptions.forEach(opt => {
           methodSelectHtml += `<option ${opt === savedMethod ? 'selected' : ''}>${opt}</option>`;
       });
       methodSelectHtml += `</select>`;
 
-      // カラム追加: payBtn を最後に追加
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${methodSelectHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td><td>${payBtn}</td>`;
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${methodSelectHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td><td>${paymentSelectHtml}</td>`;
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
