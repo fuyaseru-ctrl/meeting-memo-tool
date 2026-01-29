@@ -2,44 +2,15 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <title>フヤセル予約管理＆生成ツール</title>
+  <title>フヤセル予約管理</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    /* --- 基本設定 --- */
     * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif; background: #f5f7fb; padding: 20px; }
-
-    /* --- レイアウト調整 --- */
+    body { font-family: sans-serif; background: #f5f7fb; padding: 20px; }
     .main-wrapper { display: flex; flex-wrap: wrap; gap: 20px; max-width: 1400px; margin: 0 auto; }
-    .left-column { flex: 2; min-width: 500px; }
+    .left-column { flex: 2; min-width: 600px; }
     .right-column { flex: 1; min-width: 350px; display: flex; flex-direction: column; gap: 20px; }
-
-    /* --- リストエリア --- */
-    .list-container { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); }
-
-    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; color: #333; font-size: 1.1em; }
-    .calendar-nav-btn { background: #f0f2f5; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-weight: bold; color: #555; }
-    .calendar-nav-btn:hover { background: #e4e6eb; }
-    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 15px; }
-    .cal-cell { aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 8px; cursor: pointer; font-size: 14px; color: #333; position: relative; background: #fff; border: 1px solid transparent; }
-    .cal-cell:hover { filter: brightness(0.95); }
-    .cal-sat { background-color: #eff6ff; color: #1e40af; }
-    .cal-sun { background-color: #fef2f2; color: #991b1b; }
-    .cal-head { font-size: 12px; color: #888; font-weight: normal; cursor: default; background:none !important;}
-    .cal-today { border: 2px solid #2563eb; font-weight: bold; }
-    .cal-selected { background-color: #2563eb !important; color: #fff !important; border-color: #2563eb; }
-    .cal-has-event::after { content: ""; position: absolute; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; background-color: #ef4444; }
-    .cal-selected.cal-has-event::after { background-color: #fff; }
-
-    .controls-area { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: center;}
-    .btn-sub { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; color: #555; font-size: 13px; cursor: pointer; }
-    #btnTodayReset { background-color: #dcfce7; color: #14532d; border: 1px solid #86efac; font-weight: bold; }
-    #btnGenerateMeet { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; }
-    #btnGenerateMeetForDate { background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; }
-    #btnDeleteDayBatch { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; font-weight: bold; margin-left: auto; }
-
-    .search-area { margin-bottom: 10px; }
-    .search-area input { margin-top: 0; }
+    .list-container { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
     .table-wrapper { max-height: 500px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
     table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 13px; }
     th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; vertical-align: middle; }
@@ -47,266 +18,178 @@
     tr.clickable { cursor: pointer; transition: background 0.1s; }
     tr.clickable:hover { background-color: #e3f2fd; }
     tr.selected { background-color: #bbdefb; border-left: 5px solid #2563eb; }
-    tr.highlight-next { background-color: #fef9c3 !important; border-left: 5px solid #eab308; }
-    tr.highlight-next.selected { background-color: #bbdefb !important; border-left: 5px solid #eab308; }
-    
     .meet-link { display: inline-block; padding: 4px 8px; background: #dbeafe; color: #1e40af; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold; }
-    .meet-link:hover { background: #bfdbfe; }
-    .account-badge { font-size: 11px; color: #666; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; display: inline-block; }
-    
-    /* ★コピーボタンのスタイル */
-    .copy-link-btn { padding: 4px 8px; background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 14px; }
-    .copy-link-btn:hover { background: #e5e7eb; }
-    .copy-link-btn:active { background: #d1d5db; }
-
-    /* --- Box --- */
-    .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; }
-    h1 { font-size: 18px; margin: 0 0 16px; display:flex; align-items:center; gap:8px; }
-    label { display: block; margin-top: 12px; font-size: 13px; color: #555; }
-    input, select, button, textarea { width: 100%; padding: 10px; margin-top: 6px; font-size: 15px; border-radius: 10px; border: 1px solid #d7dbe6; background: #fff; }
-    .dateWrap { position: relative; }
-    .btnRow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-    button { border: none; cursor: pointer; font-weight: 800; background: #2563eb; color: #fff; }
-    button.secondary { background: #111827; }
-    button.danger { background: #ef4444; } 
-    button.primary-sub { background: #4f46e5; }
-    button.add-btn { background: #10b981; }
-    button.delete-row-btn { background: #b91c1c; color: #fff; margin-top: 10px; }
-    button:hover { opacity: .92; }
-    
+    .copy-link-btn { padding: 4px 8px; background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; }
+    .account-badge { font-size: 11px; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
+    .status-tag { padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; display:inline-block;}
+    .status-red { color: #d93025; background: #fce8e6; border: 1px solid #f28b82; }
+    .status-blue { color: #1a73e8; background: #e8f0fe; border: 1px solid #8ab4f8; }
+    .status-orange { color: #e37400; background: #fcefc7; border: 1px solid #fdd663; }
+    tr.row-cancelled td { text-decoration: line-through; color: #9ca3af; }
+    tr.row-cancelled .meet-link, tr.row-cancelled .copy-link-btn { text-decoration: none; opacity: 0.6; }
+    .method-select { border: 1px solid #ddd; padding: 4px; border-radius: 4px; font-size: 12px; background: #f9fafb; cursor: pointer; width: 110px; }
+    .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    h1 { font-size: 18px; margin: 0 0 16px; }
+    input, select, button, textarea { width: 100%; padding: 10px; margin-top: 6px; border-radius: 8px; border: 1px solid #ddd; }
+    button { border: none; cursor: pointer; font-weight: bold; background: #2563eb; color: #fff; margin-top: 10px;}
+    button:hover { opacity: 0.9; }
+    .btn-sub { background:#fff; color:#333; border:1px solid #ddd; padding:8px 12px; font-size:13px; margin-right:5px; margin-bottom:5px; width:auto; }
+    #btnTodayReset { background:#dcfce7; color:#166534; border-color:#86efac; }
+    #btnDeleteDayBatch { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+    .danger { background: #ef4444; }
+    .cancel-status-btn { background: #6b7280; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 10px; }
+    .cal-cell { aspect-ratio: 1; display: flex; justify-content: center; align-items: center; border-radius: 8px; cursor: pointer; background: #fff; border: 1px solid transparent; }
+    .cal-cell:hover { filter: brightness(0.95); }
+    .cal-today { border: 2px solid #2563eb; font-weight: bold; }
+    .cal-selected { background-color: #2563eb; color: #fff; }
+    .cal-has-event { background-color: #eff6ff; }
+    .edit-status-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
+    .edit-status-row button { width: auto; background: #0891b2; font-size: 13px; padding: 10px 16px;}
     textarea { height: 180px; margin-top: 12px; font-size: 14px; line-height: 1.6; font-family: monospace; white-space: pre-wrap; }
-    .status { margin-top: 8px; font-size: 12px; color: #0f766e; min-height: 16px; }
-    #selectedNameDisplay { font-size:12px; color:#666; position:absolute; top:20px; right:20px; font-weight:bold; }
     .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
-
-    @media (max-width: 900px) {
-        .main-wrapper { flex-direction: column; }
-        .left-column, .right-column { min-width: 100%; flex: auto; }
-    }
+    @media (max-width: 900px) { .main-wrapper { flex-direction: column; } .left-column, .right-column { min-width: 100%; flex: auto; } }
   </style>
 </head>
 <body>
-
 <div class="main-wrapper">
-  
   <div class="left-column">
     <div class="list-container">
       <h2>📅 予約リスト</h2>
-      <div class="calendar-header">
-          <button class="calendar-nav-btn" id="prevMonthBtn">＜</button>
-          <span id="calendarTitle"></span>
-          <button class="calendar-nav-btn" id="nextMonthBtn">＞</button>
+      <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+          <button class="btn-sub" id="prevMonthBtn">＜</button>
+          <span id="calendarTitle" style="font-weight:bold; font-size:1.1em;"></span>
+          <button class="btn-sub" id="nextMonthBtn">＞</button>
       </div>
       <div class="calendar-grid" id="calendarGrid"></div>
-      
-      <div class="controls-area">
+      <div style="margin-bottom:15px;">
           <button class="btn-sub" id="btnTodayReset">今日に戻る</button>
-          <button class="btn-sub" id="btnShowAll">リスト全表示</button>
-          <button class="btn-sub" id="btnGenerateMeet">⚡ 全一括発行</button>
-          <button class="btn-sub" id="btnGenerateMeetForDate">⚡ 表示日のMeet発行</button>
+          <button class="btn-sub" id="btnShowAll">全リスト表示</button>
+      </div>
+      <div style="margin-bottom:10px;">
+          <button class="btn-sub" id="btnGenerateMeet" style="background:#e0e7ff; color:#3730a3;">⚡ 全一括発行</button>
+          <button class="btn-sub" id="btnGenerateMeetForDate" style="background:#dbeafe; color:#1e40af;">⚡ 表示日のMeet発行</button>
           <button class="btn-sub" id="btnDeleteDayBatch">🗑️ 表示日の全リンク削除</button>
       </div>
-
-      <div class="search-area"><input type="text" id="searchInput" placeholder="名前で検索..."></div>
+      <input type="text" id="searchInput" placeholder="名前で検索..." style="margin-bottom:10px;">
       <div id="loading" style="font-size:12px; color:#666;">読み込み中...</div>
-
       <div class="table-wrapper">
         <table id="customerTable" style="display:none;">
           <thead>
-            <tr>
-              <th>来店日</th>
-              <th>時間</th>
-              <th>お名前</th>
-              <th>ステータス</th>
-              <th>アカウント</th>
-              <th>Meet</th>
-              <th>コピー</th> </tr>
+            <tr><th>来店日</th><th>時間</th><th>お名前</th><th>ステータス</th><th>面談方式</th><th>担当</th><th>Meet</th><th>コピー</th></tr>
           </thead>
           <tbody id="tableBody"></tbody>
         </table>
       </div>
     </div>
   </div>
-
   <div class="right-column">
-    
     <div class="box" id="toolBox">
-      <h1>🗓 面談メモ生成</h1>
-      <div id="selectedNameDisplay"></div>
-
-      <label>日付</label>
-      <div class="dateWrap"><input type="date" id="date"></div>
-      <label>開始時間</label>
-      <select id="time"></select>
-      <label>面談方法</label>
-      <select id="method">
-        <option>Google Meet</option>
-        <option>電話</option>
-        <option>LINE</option>
-        <option>メール</option>
-      </select>
-      <div class="btnRow">
-        <button id="copyAllBtn">全文コピー</button>
-        <button class="secondary" id="copyDateBtn">日時のみコピー</button>
+      <h1>🗓 面談メモ & 操作</h1>
+      <div id="selectedNameDisplay" style="font-weight:bold; color:#2563eb; margin-bottom:10px;"></div>
+      <label>日付</label><input type="date" id="date">
+      <label>開始時間</label><select id="time"></select>
+      <label>面談方法(メモ用)</label>
+      <select id="method"><option>Google Meet</option><option>電話</option><option>LINE</option><option>その他</option></select>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+        <button id="copyAllBtn">全文コピー</button><button class="secondary" id="copyDateBtn" style="background:#111827;">日時のみコピー</button>
       </div>
-      <div class="status" id="status"></div>
-      <textarea id="preview" readonly></textarea>
-
-      <div class="action-row">
-          <button class="primary-sub" id="btnCreateSingle">🔗 個別リンク発行</button>
-          <button class="danger" id="btnDeleteSingle">🗑️ リンク削除</button>
+      <textarea id="preview" style="height:150px; font-family:monospace;"></textarea>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
+          <button style="background:#4f46e5;" id="btnCreateSingle">🔗 個別リンク発行</button><button class="danger" id="btnDeleteSingle">🗑️ リンク削除</button>
       </div>
-      <button class="delete-row-btn" id="btnDeleteRow">❌ 予約自体を削除（スプシから消す）</button>
+      <button class="cancel-status-btn" id="btnCancelStatus">🚫 キャンセル処理</button>
+      <div class="edit-status-row">
+        <div style="flex:1"><label style="margin-top:0">ステータス変更</label>
+            <select id="editStatus"><option>予約確定</option><option>初回面談</option><option>１ヵ月面談</option><option>２ヵ月面談</option><option>３ヵ月面談</option><option>４ヵ月面談</option><option>５ヵ月面談</option><option>満期面談</option><option>キャンセル</option></select>
+        </div><button id="btnUpdateStatus">🔄 更新</button>
+      </div>
     </div>
-
     <div class="box" id="addBox">
-      <h1>📝 新規予約登録 <span style="font-size:12px;color:#666;font-weight:normal">(スプシに追加)</span></h1>
-      <label>来店日</label>
-      <input type="date" id="addDate">
-      <label>時間</label>
-      <select id="addTime"></select>
-      <label>お名前</label>
-      <input type="text" id="addName" placeholder="山田 太郎">
-      <label>ステータス</label>
-      <select id="addStatus">
-        <option>予約確定</option>
-        <option>月次面談</option>
-        <option>キャンセル</option>
-        <option>予約確定（手動追加）</option>
-      </select>
-      <button class="add-btn" id="btnAddManual" style="margin-top:20px;">＋ 予約を追加する</button>
+      <h1>📝 新規予約登録 <span style="font-size:12px;color:#666;font-weight:normal">(スプシ追加)</span></h1>
+      <label>来店日</label><input type="date" id="addDate">
+      <label>時間</label><select id="addTime"></select>
+      <label>お名前</label><input type="text" id="addName" placeholder="山田 太郎">
+      <label>ステータス</label><select id="addStatus"><option>予約確定</option><option>初回面談</option><option>月次面談</option><option>キャンセル</option></select>
+      <label>面談方式</label><select id="addMethod"><option>Google Meet</option><option>電話</option><option>LINE</option><option>その他</option></select>
+      <button style="background:#10b981;" id="btnAddManual">＋ 予約を追加する</button>
     </div>
-
   </div>
 </div>
-
 <script>
 (() => {
   const API_URL = "https://script.google.com/macros/s/AKfycbz3AX4cK2ViWserTlSrlBg66hiNrAxwP4xZFeWb5tFPegzfGxikb7yAH0jNXVlrezRp/exec";
+  let allData = []; let calDate = new Date(); let currentSelectedDateStr = ""; let selectedCustomerName = ""; 
+  const dateEl = document.getElementById("date"), timeEl = document.getElementById("time"), methodEl = document.getElementById("method"), previewEl = document.getElementById("preview"), nameDisplay = document.getElementById("selectedNameDisplay"), editStatusEl = document.getElementById("editStatus");
+  const addDateEl = document.getElementById("addDate"), addTimeEl = document.getElementById("addTime"), addNameEl = document.getElementById("addName"), addStatusEl = document.getElementById("addStatus"), addMethodEl = document.getElementById("addMethod");
 
-  let allData = [];
-  let calDate = new Date(); 
-  let currentSelectedDateStr = "";
-  let selectedCustomerName = ""; 
-  const week = ["日","月","火","水","木","金","土"];
+  function init() { buildTimes(); setToday(); loadData(); setupEvents(); }
+  function buildTimes() { timeEl.innerHTML = ""; addTimeEl.innerHTML = ""; for (let h = 5; h <= 23; h++) { const opt = document.createElement("option"); opt.value = String(h); opt.textContent = `${h}時～`; if(h === 10) opt.selected = true; timeEl.appendChild(opt); addTimeEl.appendChild(opt.cloneNode(true)); } }
+  function setToday() { const t = new Date(); const s = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`; dateEl.value = s; addDateEl.value = s; }
   
-  const dateEl = document.getElementById("date");
-  const timeEl = document.getElementById("time");
-  const methodEl = document.getElementById("method");
-  const previewEl = document.getElementById("preview");
-  const statusEl = document.getElementById("status");
-  const nameDisplay = document.getElementById("selectedNameDisplay");
-
-  const addDateEl = document.getElementById("addDate");
-  const addTimeEl = document.getElementById("addTime");
-  const addNameEl = document.getElementById("addName");
-  const addStatusEl = document.getElementById("addStatus");
-
-  function init() { buildTimes(); setToday(); renderPreview(); loadData(); setupEvents(); }
-
-  function buildTimes() {
-    timeEl.innerHTML = ""; addTimeEl.innerHTML = ""; 
-    for (let h = 5; h <= 23; h++) {
-      const opt = document.createElement("option");
-      opt.value = String(h);
-      opt.textContent = `${h}時～`;
-      if(h === 10) opt.selected = true;
-      timeEl.appendChild(opt);
-      addTimeEl.appendChild(opt.cloneNode(true)); 
-    }
-  }
-  function setToday() {
-    const t = new Date();
-    const s = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
-    dateEl.value = s;
-    addDateEl.value = s;
-  }
-
   function setupEvents() {
     document.getElementById('prevMonthBtn').onclick = () => { calDate.setMonth(calDate.getMonth()-1); renderCalendar(); };
     document.getElementById('nextMonthBtn').onclick = () => { calDate.setMonth(calDate.getMonth()+1); renderCalendar(); };
-    document.getElementById('btnTodayReset').onclick = () => {
-        calDate = new Date();
-        const todayStr = `${calDate.getFullYear()}.${('0'+(calDate.getMonth()+1)).slice(-2)}.${('0'+calDate.getDate()).slice(-2)}`;
-        currentSelectedDateStr = todayStr;
-        renderCalendar(); filterListByDate(todayStr);
-    };
-    document.getElementById('btnShowAll').onclick = () => {
-        currentSelectedDateStr = ""; selectedCustomerName = ""; nameDisplay.textContent = "";
-        renderCalendar(); 
-        renderList(sortDataByDateDesc(allData));
-    };
-    document.getElementById('copyAllBtn').onclick = () => copyText(buildFullMessage(), "全文コピー完了");
-    document.getElementById('copyDateBtn').onclick = () => copyText(buildDateBox(), "日時コピー完了");
-    dateEl.onchange = renderPreview;
-    timeEl.onchange = renderPreview;
-    methodEl.onchange = renderPreview;
+    document.getElementById('btnTodayReset').onclick = () => { calDate = new Date(); const todayStr = `${calDate.getFullYear()}.${('0'+(calDate.getMonth()+1)).slice(-2)}.${('0'+calDate.getDate()).slice(-2)}`; currentSelectedDateStr = todayStr; renderCalendar(); filterListByDate(todayStr); };
+    document.getElementById('btnShowAll').onclick = () => { currentSelectedDateStr = ""; selectedCustomerName = ""; nameDisplay.textContent = ""; renderCalendar(); renderList(sortDataByDateDesc(allData)); };
+    document.getElementById('copyAllBtn').onclick = () => copyText(buildFullMessage());
+    document.getElementById('copyDateBtn').onclick = () => copyText(buildDateBox());
+    dateEl.onchange = renderPreview; timeEl.onchange = renderPreview; methodEl.onchange = renderPreview;
+    document.getElementById('searchInput').onkeyup = (e) => { currentSelectedDateStr = ""; renderCalendar(); const val = e.target.value.toLowerCase(); renderList(sortDataByDateDesc(allData.filter(row => row.join(" ").toLowerCase().includes(val)))); };
 
-    document.getElementById('searchInput').onkeyup = (e) => {
-        currentSelectedDateStr = ""; renderCalendar();
-        const val = e.target.value.toLowerCase();
-        renderList(sortDataByDateDesc(allData.filter(row => row.join(" ").toLowerCase().includes(val))));
-    };
-
-    document.getElementById('btnGenerateMeet').onclick = async () => {
-        if(!confirm("【全データ対象】\n未発行の予約に対して、Meetリンクを一括発行しますか？")) return;
-        await callApi("generateLinks", {}, "btnGenerateMeet", "全発行中...");
-    };
-    document.getElementById('btnGenerateMeetForDate').onclick = async () => {
-        if(!currentSelectedDateStr) { alert("カレンダーから日付を選んでください"); return; }
-        const formattedDate = currentSelectedDateStr.replace(/\./g, '-');
-        if(!confirm(`【${formattedDate} のみ対象】\nこの日の未発行予約に対して、Meetリンクを一括発行しますか？`)) return;
-        await callApi("generateLinksForDate", { date: formattedDate }, "btnGenerateMeetForDate", "発行中...");
-    };
-    document.getElementById('btnDeleteDayBatch').onclick = async () => {
-        if(!currentSelectedDateStr) { alert("カレンダーから削除したい日付を選んでください"); return; }
-        if(!confirm(`【注意】\n${currentSelectedDateStr.replace(/\./g,'-')} のリンクを全削除しますか？`)) return;
-        await callApi("deleteDayBatch", { date: currentSelectedDateStr.replace(/\./g,'-') }, "btnDeleteDayBatch", "全削除中...");
-    };
-    document.getElementById('btnCreateSingle').onclick = async () => {
-        if(!selectedCustomerName) { alert("リストから人を選んでください"); return; }
-        if(!confirm(`【個別発行】\n${selectedCustomerName} 様のリンクを発行しますか？`)) return;
-        await callApi("createSingle", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnCreateSingle", "発行中...");
-    };
-    document.getElementById('btnDeleteSingle').onclick = async () => {
-        if(!selectedCustomerName) { alert("リストから人を選んでください"); return; }
-        if(!confirm(`【個別削除】\n${selectedCustomerName} 様のリンクを削除しますか？`)) return;
-        await callApi("deleteSingle", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnDeleteSingle", "削除中...");
-    };
-
+    const actions = [
+        {id:'btnGenerateMeet', act:'generateLinks', msg:'全一括発行しますか？'},
+        {id:'btnGenerateMeetForDate', act:'generateLinksForDate', dateReq:true, msg:'表示日のリンクを一括発行しますか？'},
+        {id:'btnDeleteDayBatch', act:'deleteDayBatch', dateReq:true, msg:'表示日のリンクを全削除しますか？'},
+        {id:'btnCreateSingle', act:'createSingle', nameReq:true, msg:'個別発行しますか？'},
+        {id:'btnDeleteSingle', act:'deleteSingle', nameReq:true, msg:'リンクを削除しますか？'},
+        {id:'btnCancelStatus', act:'cancelStatus', nameReq:true, msg:'キャンセル処理しますか？'},
+        {id:'btnUpdateStatus', act:'updateStatus', nameReq:true, msg:'ステータスを更新しますか？', extra:{newStatus:()=>editStatusEl.value}}
+    ];
+    actions.forEach(a => {
+        document.getElementById(a.id).onclick = async () => {
+            if(a.dateReq && !currentSelectedDateStr) return alert("日付を選んでください");
+            if(a.nameReq && !selectedCustomerName) return alert("リストから人を選んでください");
+            let params = {};
+            if(a.dateReq) params.date = currentSelectedDateStr.replace(/\./g, '-'); else params.date = dateEl.value;
+            if(a.nameReq) { params.time = timeEl.value; params.name = selectedCustomerName; }
+            if(a.extra) { for(let k in a.extra) params[k] = a.extra[k](); }
+            if(!confirm(a.msg)) return;
+            await callApi(a.act, params, a.id, "処理中...");
+        };
+    });
     document.getElementById('btnAddManual').onclick = async () => {
-        const d = addDateEl.value;
-        const t = addTimeEl.value;
-        const n = addNameEl.value;
-        const s = addStatusEl.value;
-        if(!d || !n) { alert("日付とお名前は必須です"); return; }
-        if(!confirm(`${d} ${t}時～\n${n} 様\n\nこの内容で予約を追加しますか？`)) return;
-        await callApi("manualAdd", { date: d, time: t + ":00", name: n, status: s }, "btnAddManual", "追加中...");
+        const d = addDateEl.value, n = addNameEl.value;
+        if(!d || !n) return alert("日付と名前は必須です");
+        if(!confirm(`予約を追加しますか？\n${d} ${n}様`)) return;
+        await callApi("manualAdd", { date: d, time: addTimeEl.value + ":00", name: n, status: addStatusEl.value, method: addMethodEl.value }, "btnAddManual", "追加中...");
         addNameEl.value = "";
-        alert("追加しました！リストを更新します。");
-        loadData();
     };
-
+    // ★行削除ボタン（手動のみ）
     document.getElementById('btnDeleteRow').onclick = async () => {
-        if(!selectedCustomerName) { alert("リストから削除したい人を選んでください"); return; }
-        if(!confirm(`⚠️【重要】\n${selectedCustomerName} 様の予約データ自体を完全に削除しますか？\n（スプレッドシートの行が消えます）`)) return;
-        await callApi("deleteRow", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnDeleteRow", "完全削除中...");
-        alert("削除しました！");
-        selectedCustomerName = "";
-        loadData();
+      if(!selectedCustomerName) return alert("リストから人を選んでください");
+      if(!confirm("【注意】この行を完全に削除しますか？")) return;
+      await callApi("deleteRow", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnDeleteRow", "削除中...");
     };
   }
 
-  async function callApi(action, params, btnId, loadingText) {
-    const btn = document.getElementById(btnId);
-    const originalText = btn.textContent;
-    btn.textContent = loadingText; btn.disabled = true;
+  window.updateListMethod = async (selectEl, date, time, name) => {
+    selectEl.disabled = true; 
+    try { await callApi("updateMethod", { date: date, time: time, name: name, newMethod: selectEl.value }, null, null, true); } 
+    catch(e) { alert("変更失敗"); selectEl.disabled = false; }
+  };
+
+  async function callApi(action, params, btnId, loadingText, silent=false) {
+    let btn = btnId ? document.getElementById(btnId) : null;
+    let originalText = btn ? btn.textContent : "";
+    if(btn) { btn.textContent = loadingText; btn.disabled = true; }
     try {
-        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: action, ...params }) });
-        const result = await response.json();
-        if(action !== "manualAdd" && action !== "deleteRow") { alert(result.message); loadData(); }
-    } catch(e) { alert("エラー: " + e.message); } 
-    finally { btn.textContent = originalText; btn.disabled = false; }
+        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: action, ...params }) });
+        const result = await res.json();
+        if(!silent && action !== "manualAdd") alert(result.message);
+        if(action === "manualAdd") alert("追加しました");
+        loadData();
+    } catch(e) { alert("エラー: " + e.message); } finally { if(btn) { btn.textContent = originalText; btn.disabled = false; } }
   }
 
   function loadData() {
@@ -314,139 +197,72 @@
     fetch(API_URL).then(res => res.json()).then(data => {
         allData = data;
         if (currentSelectedDateStr) filterListByDate(currentSelectedDateStr);
-        else renderList(sortDataByDateDesc(allData)); 
+        else renderList(sortDataByDateDesc(allData));
         renderCalendar();
         document.getElementById('loading').style.display = 'none';
         document.getElementById('customerTable').style.display = 'table';
-    }).catch(err => {
-        document.getElementById('loading').textContent = "読み込みエラー";
-        alert("データの読み込みに失敗しました。");
+    }).catch(err => { document.getElementById('loading').textContent = "読み込みエラー"; });
+  }
+
+  function renderList(data) {
+    const tbody = document.getElementById('tableBody'); tbody.innerHTML = "";
+    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='8' style='text-align:center; color:#999; padding:20px;'>データなし</td></tr>"; return; }
+    const frag = document.createDocumentFragment();
+    data.forEach(row => {
+      const tr = document.createElement('tr'); tr.className = "clickable";
+      const name = row[12]||row[6]||"なし";
+      const status = row[5] || ""; const methodVal = row[6] || "Google Meet";
+      let statusHtml = status;
+      if (status.includes("初回")) statusHtml = `<span class="status-tag status-red">${status}</span>`;
+      else if (status.includes("ヵ月")) statusHtml = `<span class="status-tag status-blue">${status}</span>`;
+      else if (status.includes("満期")) statusHtml = `<span class="status-tag status-orange">${status}</span>`;
+      else if (status.includes("キャンセル")) tr.classList.add("row-cancelled");
+      
+      const meetUrl = row[18] ? `<a href="${row[18]}" target="_blank" class="meet-link">📹参加</a>` : "";
+      const copyBtn = row[18] ? `<button class="copy-link-btn" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
+      const accountBadge = row[19] ? `<span class="account-badge">${row[19]}</span>` : '<span style="font-size:10px;color:#ddd;">-</span>';
+      
+      // ★プルダウン生成 (LINE追加済)
+      const opts = ["Google Meet", "電話", "LINE", "その他"].map(o => `<option value="${o}" ${o===methodVal?"selected":""}>${o}</option>`).join("");
+      const selectHtml = `<select class="method-select" onclick="event.stopPropagation()" onchange="updateListMethod(this, '${row[2]}', '${row[3]}', '${name}')">${opts}</select>`;
+
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${statusHtml}</td><td>${selectHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
+      tr.onclick = () => {
+        document.querySelectorAll('tr').forEach(t => t.classList.remove('selected')); tr.classList.add('selected');
+        if(row[2]) dateEl.value = safeDate(row[2]); if(row[3]) timeEl.value = String(parseInt(row[3]));
+        selectedCustomerName = name; nameDisplay.textContent = `選択中: ${name}`; editStatusEl.value = status || "予約確定";
+        renderPreview(); if(window.innerWidth < 600) document.getElementById('toolBox').scrollIntoView({behavior:"smooth"});
+      };
+      frag.appendChild(tr);
     });
+    tbody.appendChild(frag);
   }
 
   function renderCalendar() {
     const grid = document.getElementById('calendarGrid'); grid.innerHTML = "";
-    ["日","月","火","水","木","金","土"].forEach(w => {
-        const d = document.createElement('div'); d.className = "cal-cell cal-head"; d.textContent = w;
-        if(w==="日") d.style.color = "#ef4444"; if(w==="土") d.style.color = "#3b82f6";
-        grid.appendChild(d);
-    });
-    const y = calDate.getFullYear(), m = calDate.getMonth();
-    document.getElementById('calendarTitle').textContent = `${y}年 ${m+1}月`;
+    ["日","月","火","水","木","金","土"].forEach(w => { const d = document.createElement('div'); d.className = "cal-cell"; d.style.background="none"; d.style.cursor="default"; d.textContent = w; if(w==="日") d.style.color="red"; if(w==="土") d.style.color="blue"; grid.appendChild(d); });
+    const y = calDate.getFullYear(), m = calDate.getMonth(); document.getElementById('calendarTitle').textContent = `${y}年 ${m+1}月`;
     const first = new Date(y, m, 1), last = new Date(y, m+1, 0);
     for(let i=0; i<first.getDay(); i++) grid.appendChild(document.createElement('div'));
-    
     for(let d=1; d<=last.getDate(); d++) {
         const div = document.createElement('div'); div.className = "cal-cell"; div.textContent = d;
         const targetStr = `${y}.${('0'+(m+1)).slice(-2)}.${('0'+d).slice(-2)}`;
-        const check = new Date(y, m, d);
-        if(check.getDay()===6) div.classList.add("cal-sat");
-        else if(check.getDay()===0 || isHoliday(y, m+1, d)) div.classList.add("cal-sun");
-        const today = new Date();
-        if(y===today.getFullYear() && m===today.getMonth() && d===today.getDate()) div.classList.add("cal-today");
         if(allData.some(r => r[2] && r[2].includes(targetStr))) div.classList.add("cal-has-event");
         if(targetStr === currentSelectedDateStr) div.classList.add("cal-selected");
+        const check = new Date(y, m, d); if(check.getDay()===0) div.style.color="red"; else if(check.getDay()===6) div.style.color="blue";
         div.onclick = () => { currentSelectedDateStr = targetStr; renderCalendar(); filterListByDate(targetStr); };
         grid.appendChild(div);
     }
   }
-
-  function renderList(data, isFiltered=false) {
-    const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = "";
-    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
-    
-    const fragment = document.createDocumentFragment();
-    
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}.${('0'+(today.getMonth()+1)).slice(-2)}.${('0'+today.getDate()).slice(-2)}`;
-    const highlight = isFiltered && (currentSelectedDateStr === todayStr);
-    let hTime = null;
-    if (highlight) {
-        const now = new Date();
-        const next = data.find(r => {
-            const t = r[3]; if(!t) return false;
-            const d = new Date(); d.setHours(t.split(":")[0], t.split(":")[1]||0, 0, 0);
-            return d > now;
-        });
-        if(next) hTime = next[3];
-    }
-
-    data.forEach(row => {
-      const tr = document.createElement('tr'); tr.className = "clickable";
-      const name = row[12]||row[6]||"なし";
-      if(highlight && hTime && row[3]===hTime) tr.classList.add("highlight-next");
-      
-      const meetUrl = row[18] ? `<a href="${row[18]}" target="_blank" class="meet-link">📹参加</a>` : "";
-      const accountBadge = row[19] ? `<span class="account-badge">${row[19]}</span>` : '<span style="font-size:10px;color:#ddd;">-</span>';
-      
-      // ★コピーボタンの追加 (URLがある時だけ表示)
-      const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
-
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
-      tr.onclick = () => {
-        document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
-        tr.classList.add('selected');
-        if(row[2]) dateEl.value = safeDate(row[2]);
-        if(row[3]) timeEl.value = String(parseInt(row[3]));
-        selectedCustomerName = name;
-        nameDisplay.textContent = `選択中: ${name}`;
-        renderPreview();
-        if(window.innerWidth < 600) document.getElementById('toolBox').scrollIntoView({behavior:"smooth"});
-      };
-      fragment.appendChild(tr);
-    });
-    tbody.appendChild(fragment);
-  }
-
-  // ★URLコピー用の関数（アラート付き）
-  window.copyToClipboard = async (text) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      // 小さく通知を表示
-      const statusEl = document.getElementById("status");
-      statusEl.textContent = "リンクをコピーしました！📋";
-      setTimeout(() => statusEl.textContent = "", 2000);
-    } catch (err) {
-      alert("コピーに失敗しました");
-    }
-  };
-
-  // Util
-  function safeDate(s) { const m=s.match(/(\d{4})[\.\/\-](\d{1,2})[\.\/\-](\d{1,2})/); return m?`${m[1]}-${m[2]}-${m[3]}`:""; }
-  function isHoliday(y, m, d) { return ["2025-01-01","2025-01-13","2025-02-11","2025-02-23","2025-02-24","2025-03-20","2025-04-29","2025-05-03","2025-05-04","2025-05-05","2025-05-06","2025-07-21","2025-08-11","2025-09-15","2025-09-23","2025-10-13","2025-11-03","2025-11-23","2025-11-24","2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-21","2026-04-29","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11","2026-09-21","2026-09-23","2026-10-12","2026-11-03","2026-11-23"].includes(`${y}-${('0'+m).slice(-2)}-${('0'+d).slice(-2)}`); }
-  
-  function getNumericDate(str) {
-      if(!str) return 0;
-      const s = str.replace(/[^\d]/g, ""); 
-      return parseInt(s) || 0; 
-  }
-  function parseTime(tStr) {
-      if (!tStr) return 9999;
-      const parts = String(tStr).split(":");
-      return parseInt(parts[0]) * 60 + (parseInt(parts[1]) || 0);
-  }
-
-  function sortDataByDateDesc(dataList) {
-    return dataList.sort((a, b) => {
-        const dA = getNumericDate(a[2]); const dB = getNumericDate(b[2]);
-        if (dA !== dB) return dB - dA; 
-        return parseTime(a[3]) - parseTime(b[3]); 
-    });
-  }
+  function filterListByDate(targetDateStr) { renderList(sortDataByTime(allData.filter(row => row[2] && row[2].includes(targetDateStr)))); }
+  function sortDataByDateDesc(dataList) { return dataList.sort((a, b) => { if (a[2] !== b[2]) return a[2] < b[2] ? 1 : -1; return parseTime(a[3]) - parseTime(b[3]); }); }
   function sortDataByTime(dataList) { return dataList.sort((a,b)=>parseTime(a[3]) - parseTime(b[3])); }
-
-  function filterListByDate(targetDateStr) {
-    const filtered = allData.filter(row => row[2] && row[2].includes(targetDateStr));
-    renderList(sortDataByTime(filtered), true); 
-  }
-
-  function fmtDateParts() { const v=dateEl.value; if(!v)return null; const d=new Date(v+"T00:00:00"); return {y:d.getFullYear(),m:d.getMonth()+1,d:d.getDate(),w:week[d.getDay()],h:timeEl.value,mt:methodEl.value}; }
-  function buildDateBox() { const p=fmtDateParts(); return p?`──────────────\n面談予約日時\n${p.y}年${p.m}月${p.d}日（${p.w}）\n${p.h}時～面談開始\n方法：${p.mt}\n──────────────`:""; }
-  function buildFullMessage() { return `フヤセルサポートです。\nご連絡いただきありがとうございます。\n\n${buildDateBox()}\n\nご指定のお時間に\n空き枠がございましたので\n上記日程にて面談に\n入らせていただきます。\n\n面談の際には\n\n「フヤセルAIの準備」\n「聞きたいこと」\n「サポートを受けたいこと」\n\nこちらをご用意・ご準備のうえ\nご参加いただけますと幸いです。\n\nその間でも\nご質問などがございましたら\n\nしっかり丁寧にサポート対応を\nさせていただきますので\n\nご不明点がございます場合は\nお問い合わせくださいませ。\n\n何卒よろしくお願いいたします。`; }
-  function renderPreview() { const t=buildFullMessage(); previewEl.value=t||"日付を選ぶとプレビューが出ます"; statusEl.textContent=""; }
-  async function copyText(t,m) { if(!t){statusEl.textContent="日付エラー";return;} try{await navigator.clipboard.writeText(t);statusEl.textContent=m;}catch{previewEl.select();document.execCommand("copy");statusEl.textContent=m;} setTimeout(()=>statusEl.textContent="",1500); }
-
+  function parseTime(tStr) { if (!tStr) return 9999; const p = String(tStr).split(":"); return parseInt(p[0]) * 60 + (parseInt(p[1]) || 0); }
+  function safeDate(s) { const m=s.match(/(\d{4})[\.\/\-](\d{1,2})[\.\/\-](\d{1,2})/); return m?`${m[1]}-${m[2]}-${m[3]}`:""; }
+  function buildFullMessage() { return `面談予約日時\n${dateEl.value} ${timeEl.value}時〜\n担当：フヤセルサポート`; }
+  function buildDateBox() { return `${dateEl.value} ${timeEl.value}時〜`; }
+  function renderPreview() { previewEl.value = buildFullMessage(); }
+  async function copyText(t) { try{await navigator.clipboard.writeText(t);alert("コピーしました");}catch(e){alert("コピー失敗");} }
   init();
 })();
 </script>
