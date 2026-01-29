@@ -346,19 +346,39 @@
         loadData();
     };
 
-    // ▼▼▼ 修正箇所：ボタンを「予約削除」にしつつ、動作は「キャンセル（データ保護）」に変更 ▼▼▼
+    // ▼▼▼ 修正箇所：予約削除ボタン（赤）の挙動変更 ▼▼▼
     document.getElementById('btnDeleteRow').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから削除したい人を選んでください"); return; }
         
-        // メッセージ変更：データは残ることを明示
-        if(!confirm(`【予約削除】\n${selectedCustomerName} 様の予約を削除しますか？\n\n※安心してください、スプレッドシートのデータは残ります。\n※カレンダーからは削除され、ステータスが「キャンセル」に変更されます。`)) return;
+        // シンプルな確認メッセージ
+        if(!confirm(`【予約削除】\n${selectedCustomerName} 様の予約を削除しますか？\n（スプレッドシートのデータは残ります）`)) return;
         
-        // ここで安全な "cancelStatus" を呼び出します（deleteRowではない）
-        await callApi("cancelStatus", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnDeleteRow", "削除処理中...");
-        
-        alert("削除しました（データは残し、ステータスをキャンセルに変更しました）");
-        selectedCustomerName = "";
-        loadData();
+        const btn = document.getElementById("btnDeleteRow");
+        btn.textContent = "削除処理中..."; btn.disabled = true;
+
+        try {
+            // 1. まずcancelStatusを呼んで「カレンダー削除」と「ステータス=キャンセル」にする
+            await fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "cancelStatus", date: dateEl.value, time: timeEl.value, name: selectedCustomerName }) 
+            });
+
+            // 2. 次にupdateStatusを呼んで「ステータス=削除」に上書きする（これでリストから消える）
+            //    ※少し待機してから実行することで競合を防ぐ（念のため）
+            await new Promise(r => setTimeout(r, 500));
+            const response = await fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "updateStatus", date: dateEl.value, time: timeEl.value, name: selectedCustomerName, newStatus: "削除" }) 
+            });
+            
+            alert("削除しました（リストから非表示になりました）");
+            selectedCustomerName = "";
+            loadData();
+        } catch(e) {
+            alert("エラー: " + e.message);
+        } finally {
+            btn.textContent = "❌ 予約削除"; btn.disabled = false;
+        }
     };
   }
 
@@ -438,9 +458,12 @@
     }
 
     data.forEach(row => {
+      // ▼▼▼ 追加：ステータスが「削除」のものは表示しない ▼▼▼
+      const statusStr = String(row[5] || "");
+      if (statusStr === "削除") return;
+
       const tr = document.createElement('tr'); tr.className = "clickable";
       
-      const statusStr = String(row[5] || "");
       if (statusStr.includes("キャンセル")) {
           tr.classList.add("row-canceled");
       }
