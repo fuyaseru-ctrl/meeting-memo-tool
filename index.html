@@ -67,12 +67,11 @@
     }
     tr.row-canceled a,
     tr.row-canceled button,
-    tr.row-canceled select { /* セレクトボックスも薄く */
+    tr.row-canceled select { 
         opacity: 0.5;
-        /* pointer-events: none; 必要に応じて有効化 */
     }
 
-    /* ▼▼▼ 追加：テーブル内の面談方式プルダウンのスタイル ▼▼▼ */
+    /* テーブル内の面談方式プルダウンのスタイル */
     .method-select {
         padding: 4px;
         border: 1px solid #ddd;
@@ -82,7 +81,6 @@
         color: #333;
         cursor: pointer;
     }
-    /* クリックイベントを親のtrに伝播させないためのハック */
     .method-select:hover { border-color: #aaa; }
 
     /* --- Box --- */
@@ -245,7 +243,6 @@
   const addTimeEl = document.getElementById("addTime");
   const addNameEl = document.getElementById("addName");
   const addStatusEl = document.getElementById("addStatus");
-  // 追加
   const addMethodEl = document.getElementById("addMethod");
 
   function init() { buildTimes(); setToday(); renderPreview(); loadData(); setupEvents(); }
@@ -333,15 +330,11 @@
         const t = addTimeEl.value;
         const n = addNameEl.value;
         const s = addStatusEl.value;
-        // 追加：面談方式
         const m = addMethodEl.value;
 
         if(!d || !n) { alert("日付とお名前は必須です"); return; }
         if(!confirm(`${d} ${t}時～\n${n} 様\nステータス: ${s}\n面談方式: ${m}\n\nこの内容で予約を追加しますか？`)) return;
         
-        // ★ここ重要：APIを呼ぶ前にローカルストレージに面談方式を保存
-        // 日付形式を yyyy.MM.dd に、時間は HH:mm に整形してキーにする必要があるが、
-        // 単純化のため、ユーザー入力値を加工して保存する
         const formattedDate = d.replace(/-/g, '.');
         const formattedTime = (t.length === 1 ? '0' + t : t) + ":00";
         const key = `method_${formattedDate}_${formattedTime}_${n}`;
@@ -353,10 +346,16 @@
         loadData();
     };
 
+    // ▼▼▼ 修正箇所：ボタンを「予約削除」にしつつ、動作は「キャンセル（データ保護）」に変更 ▼▼▼
     document.getElementById('btnDeleteRow').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから削除したい人を選んでください"); return; }
-        if(!confirm(`【予約削除】\n${selectedCustomerName} 様の予約を削除しますか？\n\n※スプレッドシートのデータは残ります。\n※カレンダーからは削除され、ステータスが「キャンセル」になります。`)) return;
+        
+        // メッセージ変更：データは残ることを明示
+        if(!confirm(`【予約削除】\n${selectedCustomerName} 様の予約を削除しますか？\n\n※安心してください、スプレッドシートのデータは残ります。\n※カレンダーからは削除され、ステータスが「キャンセル」に変更されます。`)) return;
+        
+        // ここで安全な "cancelStatus" を呼び出します（deleteRowではない）
         await callApi("cancelStatus", { date: dateEl.value, time: timeEl.value, name: selectedCustomerName }, "btnDeleteRow", "削除処理中...");
+        
         alert("削除しました（データは残し、ステータスをキャンセルに変更しました）");
         selectedCustomerName = "";
         loadData();
@@ -454,19 +453,14 @@
       
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
 
-      // ▼▼▼ 追加：面談方式のプルダウン生成ロジック ▼▼▼
-      // キーを作成: method_YYYY.MM.DD_HH:mm_Name
       const methodKey = `method_${row[2]}_${row[3]}_${name}`;
-      // ローカルストレージから取得（なければGoogle Meetをデフォルトに）
       const savedMethod = localStorage.getItem(methodKey) || "Google Meet";
-      
       const methodOptions = ["Google Meet", "電話", "LINE", "メール", "その他"];
       let methodSelectHtml = `<select class="method-select" onclick="event.stopPropagation()" onchange="updateMethod('${methodKey}', this.value)">`;
       methodOptions.forEach(opt => {
           methodSelectHtml += `<option ${opt === savedMethod ? 'selected' : ''}>${opt}</option>`;
       });
       methodSelectHtml += `</select>`;
-      // ▲▲▲ 追加終わり ▲▲▲
 
       tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${methodSelectHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
       tr.onclick = () => {
@@ -477,7 +471,6 @@
         selectedCustomerName = name;
         nameDisplay.textContent = `選択中: ${name}`;
         
-        // 選択時に面談メモ生成ツールのプルダウンも同期させる
         const currentMethod = localStorage.getItem(methodKey) || "Google Meet";
         const methodEl = document.getElementById("method");
         methodEl.value = currentMethod;
@@ -490,15 +483,10 @@
     tbody.appendChild(fragment);
   }
 
-  // ▼▼▼ 追加：面談方式を保存するグローバル関数 ▼▼▼
   window.updateMethod = (key, value) => {
       localStorage.setItem(key, value);
-      // メモ生成側のプルダウンも連動して変更する
       const methodEl = document.getElementById("method");
       methodEl.value = value;
-      // プレビュー更新
-      const previewEl = document.getElementById("preview");
-      // renderPreview() はスコープ外なので簡易的にイベント発火
       const event = new Event('change');
       methodEl.dispatchEvent(event);
   };
