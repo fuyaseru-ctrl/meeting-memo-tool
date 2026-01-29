@@ -11,7 +11,7 @@
 
     /* --- レイアウト --- */
     .main-wrapper { display: flex; flex-wrap: wrap; gap: 20px; max-width: 1400px; margin: 0 auto; }
-    .left-column { flex: 2; min-width: 500px; }
+    .left-column { flex: 2; min-width: 600px; }
     .right-column { flex: 1; min-width: 350px; display: flex; flex-direction: column; gap: 20px; }
 
     /* --- リストエリア --- */
@@ -55,7 +55,6 @@
     .copy-link-btn { padding: 4px 8px; background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 14px; }
     .copy-link-btn:hover { background: #e5e7eb; }
 
-    /* ステータス色分け */
     .status-tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
     .status-red { color: #d93025; background: #fce8e6; border: 1px solid #f28b82; } 
     .status-blue { color: #1a73e8; background: #e8f0fe; border: 1px solid #8ab4f8; } 
@@ -78,7 +77,6 @@
     button.add-btn { background: #10b981; }
     button.cancel-status-btn { background: #6b7280; color: #fff; margin-top: 10px; }
     
-    /* ★編集エリア用（下部に移動のためスタイル調整） */
     .edit-status-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
     .edit-status-row button { width: auto; background: #0891b2; font-size: 13px; padding: 10px 16px;}
     
@@ -126,7 +124,7 @@
               <th>時間</th>
               <th>お名前</th>
               <th>ステータス</th>
-              <th>アカウント</th>
+              <th>方式</th> <th>アカウント</th>
               <th>Meet</th>
               <th>コピー</th>
             </tr>
@@ -207,6 +205,14 @@
         <option>キャンセル</option>
         <option>予約確定（手動追加）</option>
       </select>
+      
+      <label>面談方式</label>
+      <select id="addMethod">
+        <option>Google Meet</option>
+        <option>電話</option>
+        <option>その他</option>
+      </select>
+
       <button class="add-btn" id="btnAddManual" style="margin-top:20px;">＋ 予約を追加する</button>
     </div>
 
@@ -236,6 +242,7 @@
   const addTimeEl = document.getElementById("addTime");
   const addNameEl = document.getElementById("addName");
   const addStatusEl = document.getElementById("addStatus");
+  const addMethodEl = document.getElementById("addMethod"); // ★追加
 
   function init() { buildTimes(); setToday(); renderPreview(); loadData(); setupEvents(); }
 
@@ -314,9 +321,10 @@
         const t = addTimeEl.value;
         const n = addNameEl.value;
         const s = addStatusEl.value;
+        const m = addMethodEl.value; // ★面談方式
         if(!d || !n) { alert("日付とお名前は必須です"); return; }
-        if(!confirm(`${d} ${t}時～\n${n} 様\n\nこの内容で予約を追加しますか？`)) return;
-        await callApi("manualAdd", { date: d, time: t + ":00", name: n, status: s }, "btnAddManual", "追加中...");
+        if(!confirm(`${d} ${t}時～\n${n} 様\n方式：${m}\n\nこの内容で予約を追加しますか？`)) return;
+        await callApi("manualAdd", { date: d, time: t + ":00", name: n, status: s, method: m }, "btnAddManual", "追加中...");
         addNameEl.value = "";
         alert("追加しました！リストを更新します。");
         loadData();
@@ -330,7 +338,6 @@
         loadData();
     };
 
-    // ★ステータス更新ボタン
     document.getElementById('btnUpdateStatus').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから人を選んでください"); return; }
         const newStat = editStatusEl.value;
@@ -398,7 +405,7 @@
   function renderList(data, isFiltered=false) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = "";
-    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
+    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='8' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
     
     const fragment = document.createDocumentFragment();
     
@@ -421,6 +428,9 @@
       const name = row[12]||row[6]||"なし";
       const status = row[5] || ""; 
       
+      // ★面談方式の取得（データが無ければGoogle Meetと表示）
+      const methodVal = row[6] || "Google Meet";
+
       if(highlight && hTime && row[3]===hTime) tr.classList.add("highlight-next");
       
       let statusHtml = status;
@@ -438,7 +448,7 @@
       const accountBadge = row[19] ? `<span class="account-badge">${row[19]}</span>` : '<span style="font-size:10px;color:#ddd;">-</span>';
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
 
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${statusHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${statusHtml}</td><td>${methodVal}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td>`;
       
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
@@ -447,9 +457,7 @@
         if(row[3]) timeEl.value = String(parseInt(row[3]));
         selectedCustomerName = name;
         nameDisplay.textContent = `選択中: ${name}`;
-        
         editStatusEl.value = status || "予約確定";
-
         renderPreview();
         if(window.innerWidth < 600) document.getElementById('toolBox').scrollIntoView({behavior:"smooth"});
       };
