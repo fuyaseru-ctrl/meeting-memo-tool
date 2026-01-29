@@ -43,11 +43,11 @@
     table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 13px; }
     th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; vertical-align: middle; }
     th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 1; }
+    
+    /* ★修正：行の選択スタイルのみ残し、ハイライトバグの元を削除 */
     tr.clickable { cursor: pointer; transition: background 0.1s; }
     tr.clickable:hover { background-color: #e3f2fd; }
     tr.selected { background-color: #bbdefb; border-left: 5px solid #2563eb; }
-    tr.highlight-next { background-color: #fef9c3 !important; border-left: 5px solid #eab308; }
-    tr.highlight-next.selected { background-color: #bbdefb !important; border-left: 5px solid #eab308; }
     
     .meet-link { display: inline-block; padding: 4px 8px; background: #dbeafe; color: #1e40af; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold; }
     .meet-link:hover { background: #bfdbfe; }
@@ -63,8 +63,7 @@
     tr.row-cancelled td { text-decoration: line-through; color: #9ca3af; }
     tr.row-cancelled .meet-link, tr.row-cancelled .copy-link-btn { text-decoration: none; opacity: 0.6; }
 
-    /* ★リスト内のプルダウン装飾 */
-    .method-select { border: 1px solid #ddd; padding: 2px; border-radius: 4px; font-size: 12px; background: #f9fafb; cursor: pointer; }
+    .method-select { border: 1px solid #ddd; padding: 4px; border-radius: 4px; font-size: 12px; background: #f9fafb; cursor: pointer; width: 100px; }
     .method-select:hover { background: #fff; border-color: #aaa; }
 
     /* --- Box --- */
@@ -128,7 +127,8 @@
               <th>時間</th>
               <th>お名前</th>
               <th>ステータス</th>
-              <th>面談方式</th> <th>アカウント</th>
+              <th>面談方式</th>
+              <th>アカウント</th>
               <th>Meet</th>
               <th>コピー</th>
             </tr>
@@ -326,7 +326,7 @@
         const t = addTimeEl.value;
         const n = addNameEl.value;
         const s = addStatusEl.value;
-        const m = addMethodEl.value; // 面談方式
+        const m = addMethodEl.value;
         if(!d || !n) { alert("日付とお名前は必須です"); return; }
         if(!confirm(`${d} ${t}時～\n${n} 様\n方式：${m}\n\nこの内容で予約を追加しますか？`)) return;
         await callApi("manualAdd", { date: d, time: t + ":00", name: n, status: s, method: m }, "btnAddManual", "追加中...");
@@ -356,11 +356,9 @@
   // ★リストから面談方式を変更する関数
   window.updateListMethod = async (selectEl, date, time, name) => {
     const newMethod = selectEl.value;
-    // UI上のフィードバック（一時的に無効化）
     selectEl.disabled = true;
     try {
         await callApi("updateMethod", { date: date, time: time, name: name, newMethod: newMethod }, null, null);
-        // 成功通知はcallApi内で処理（画面リロード）
     } catch(e) {
         alert("変更に失敗しました");
         selectEl.disabled = false;
@@ -378,15 +376,8 @@
     try {
         const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: action, ...params }) });
         const result = await response.json();
-        // 手動追加などの場合以外でも、リスト更新時はリロードする
-        if(action !== "manualAdd") { 
-            // 方式変更の時だけアラートを出さずに静かにリロードする手もあるが、確実性のためアラート出すか検討
-            // 今回はアラート出して更新
-            if(action !== "updateMethod") alert(result.message); 
-            loadData(); 
-        } else {
-            // manualAddの時は個別にアラート出してるのでここでは何もしない
-        }
+        if(action !== "manualAdd" && action !== "updateMethod") { alert(result.message); }
+        loadData(); 
     } catch(e) { alert("エラー: " + e.message); } 
     finally { 
         if (btn) { btn.textContent = originalText; btn.disabled = false; } 
@@ -445,27 +436,16 @@
     const today = new Date();
     const todayStr = `${today.getFullYear()}.${('0'+(today.getMonth()+1)).slice(-2)}.${('0'+today.getDate()).slice(-2)}`;
     const highlight = isFiltered && (currentSelectedDateStr === todayStr);
-    let hTime = null;
-    if (highlight) {
-        const now = new Date();
-        const next = data.find(r => {
-            const t = r[3]; if(!t) return false;
-            const d = new Date(); d.setHours(t.split(":")[0], t.split(":")[1]||0, 0, 0);
-            return d > now;
-        });
-        if(next) hTime = next[3];
-    }
+    
+    // ★バグ原因の「ハイライトロジック」を完全削除しました
 
     data.forEach(row => {
       const tr = document.createElement('tr'); tr.className = "clickable";
       const name = row[12]||row[6]||"なし";
       const status = row[5] || ""; 
       
-      // ★面談方式（なければGoogle Meet）
       const methodVal = row[6] || "Google Meet";
 
-      if(highlight && hTime && row[3]===hTime) tr.classList.add("highlight-next");
-      
       let statusHtml = status;
       if (status.includes("初回")) {
           statusHtml = `<span class="status-tag status-red">${status}</span>`;
@@ -481,8 +461,6 @@
       const accountBadge = row[19] ? `<span class="account-badge">${row[19]}</span>` : '<span style="font-size:10px;color:#ddd;">-</span>';
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
 
-      // ★プルダウン作成
-      // onclick="event.stopPropagation()" で、行クリック時の詳細表示イベントを止める
       const options = ["Google Meet", "電話", "LINE", "その他"].map(opt => 
         `<option value="${opt}" ${opt === methodVal ? "selected" : ""}>${opt}</option>`
       ).join("");
