@@ -93,7 +93,7 @@
     }
     .common-select:hover { border-color: #aaa; }
 
-    /* 入金件数表示エリア（拡張） */
+    /* 入金件数表示エリア */
     .payment-summary-box {
         margin-top: 15px;
         padding: 15px;
@@ -111,7 +111,7 @@
     .payment-detail-list {
         font-size: 13px;
         text-align: left;
-        display: inline-block; /* 中央揃えの中に左揃えのブロックを作る */
+        display: inline-block; 
         line-height: 1.6;
         width: 100%;
         max-width: 240px;
@@ -292,9 +292,17 @@
   const addNameEl = document.getElementById("addName");
   const addStatusEl = document.getElementById("addStatus");
   const addMethodEl = document.getElementById("addMethod");
-  // 追加
   const paymentSummaryBox = document.getElementById("paymentSummaryBox");
   const paymentDetailList = document.getElementById("paymentDetailList");
+
+  // ▼▼▼ 名寄せ用マップ（旧表記 → 新表記） ▼▼▼
+  const normalizeMap = {
+      "クレカ分割 6分割": "クレカ 6分割",
+      "クレカ分割 12分割": "クレカ 12分割",
+      "クレカ分割 24分割": "クレカ 24分割",
+      "クレカ分割 36分割": "クレカ 36分割",
+      "クレカ分割 48分割": "クレカ 48分割"
+  };
 
   function init() { buildTimes(); setToday(); renderPreview(); loadData(); setupEvents(); }
 
@@ -435,7 +443,6 @@
     };
   }
 
-  // 入金情報更新
   window.updatePayment = async (date, time, name, value) => {
       await callApi("updatePayment", { date: date, time: time, name: name, method: value }, "null", "更新中...");
   };
@@ -462,7 +469,7 @@
     fetch(API_URL).then(res => res.json()).then(data => {
         allData = data;
         
-        // ▼▼▼ 集計ロジック（固定順序） ▼▼▼
+        // ▼▼▼ 名寄せ＆集計ロジック（固定順序） ▼▼▼
         const paymentOrder = [
             "銀振一括",
             "クレカ一括",
@@ -478,20 +485,22 @@
         
         allData.forEach(row => {
             const status = String(row[5] || "");
-            const payment = String(row[20] || "").trim();
+            let payment = String(row[20] || "").trim();
             
-            // ステータス「削除」以外で、かつ入金情報があるもの
+            // ★名寄せ処理（旧表記なら新表記に変換してカウント）
+            if (normalizeMap[payment]) {
+                payment = normalizeMap[payment];
+            }
+
             if (status !== "削除" && payment !== "") {
                 totalPaid++;
                 counts[payment] = (counts[payment] || 0) + 1;
             }
         });
 
-        // 合計表示
         const titleEl = document.querySelector(".payment-total-title");
         titleEl.textContent = `💰 合計入金件数：${totalPaid} 件`;
 
-        // 内訳表示 (指定順序でループ)
         let detailHtml = "";
         let displayedCount = 0;
         
@@ -502,7 +511,7 @@
                     displayedCount++;
                 }
             });
-            // リストにないイレギュラーな入金方法があった場合の対応（念のため）
+            // イレギュラー対応
             for (const [key, val] of Object.entries(counts)) {
                 if (!paymentOrder.includes(key)) {
                     detailHtml += `<div class="payment-row"><span>${key}</span><span><b>${val}</b> 件</span></div>`;
@@ -583,12 +592,10 @@
 
       const tr = document.createElement('tr'); tr.className = "clickable";
       
-      // キャンセル
       if (statusStr.includes("キャンセル")) {
           tr.classList.add("row-canceled");
       }
       
-      // 入金済み
       const paymentVal = String(row[20] || "").trim();
       if (paymentVal !== "") {
           tr.classList.add("row-paid");
@@ -602,9 +609,15 @@
       
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
       
-      // ★入金プルダウン生成（指定リスト）
+      // ★入金プルダウン生成（削除機能付き）
+      // 古い表記が入っていても、プルダウン上では正しい項目を選択済みに見せるロジック追加
+      let displayVal = paymentVal;
+      if (normalizeMap[paymentVal]) {
+          displayVal = normalizeMap[paymentVal];
+      }
+
       const paymentOptions = [
-          { val: "", label: "未" },
+          { val: "", label: "未 (削除)" }, // 削除用
           { val: "銀振一括", label: "💰 銀振一括" },
           { val: "クレカ一括", label: "💳 クレカ一括" },
           { val: "クレカ 6分割", label: "💳 分割6回" },
@@ -615,12 +628,12 @@
       ];
       let paymentSelectHtml = `<select class="common-select" onclick="event.stopPropagation()" onchange="updatePayment('${row[2]}', '${row[3]}', '${name}', this.value)">`;
       paymentOptions.forEach(opt => {
-          const isSelected = paymentVal === opt.val ? "selected" : "";
+          // 正規化後の値で比較してselectedをつける
+          const isSelected = displayVal === opt.val ? "selected" : "";
           paymentSelectHtml += `<option value="${opt.val}" ${isSelected}>${opt.label}</option>`;
       });
       paymentSelectHtml += `</select>`;
 
-      // 面談方式プルダウン
       const methodKey = `method_${row[2]}_${row[3]}_${name}`;
       const savedMethod = localStorage.getItem(methodKey) || "Google Meet";
       const methodOptions = ["Google Meet", "電話", "LINE", "メール", "その他"];
