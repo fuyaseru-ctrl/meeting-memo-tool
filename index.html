@@ -123,6 +123,20 @@
         justify-content: space-between;
     }
 
+    /* ▼▼▼ 追加：ステータス色分け用クラス ▼▼▼ */
+    .status-red {
+        color: #e11d48; /* 濃い赤 */
+        font-weight: bold;
+    }
+    .status-blue {
+        color: #2563eb; /* 鮮やかな青 */
+        font-weight: bold;
+    }
+    .status-orange {
+        color: #d97706; /* 濃いオレンジ */
+        font-weight: bold;
+    }
+
     /* --- Box --- */
     .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; }
     h1 { font-size: 18px; margin: 0 0 16px; display:flex; align-items:center; gap:8px; }
@@ -295,7 +309,7 @@
   const paymentSummaryBox = document.getElementById("paymentSummaryBox");
   const paymentDetailList = document.getElementById("paymentDetailList");
 
-  // ▼▼▼ 名寄せ用マップ（旧表記 → 新表記） ▼▼▼
+  // 名寄せ用マップ
   const normalizeMap = {
       "クレカ分割 6分割": "クレカ 6分割",
       "クレカ分割 12分割": "クレカ 12分割",
@@ -469,7 +483,7 @@
     fetch(API_URL).then(res => res.json()).then(data => {
         allData = data;
         
-        // ▼▼▼ 名寄せ＆集計ロジック（固定順序） ▼▼▼
+        // 名寄せ＆集計ロジック
         const paymentOrder = [
             "銀振一括",
             "クレカ一括",
@@ -487,7 +501,6 @@
             const status = String(row[5] || "");
             let payment = String(row[20] || "").trim();
             
-            // ★名寄せ処理（旧表記なら新表記に変換してカウント）
             if (normalizeMap[payment]) {
                 payment = normalizeMap[payment];
             }
@@ -511,7 +524,6 @@
                     displayedCount++;
                 }
             });
-            // イレギュラー対応
             for (const [key, val] of Object.entries(counts)) {
                 if (!paymentOrder.includes(key)) {
                     detailHtml += `<div class="payment-row"><span>${key}</span><span><b>${val}</b> 件</span></div>`;
@@ -525,7 +537,6 @@
         }
         
         paymentDetailList.innerHTML = detailHtml;
-        // ▲▲▲ 集計終了 ▲▲▲
 
         if (currentSelectedDateStr) filterListByDate(currentSelectedDateStr);
         else renderList(sortDataByDateDesc(allData)); 
@@ -609,15 +620,23 @@
       
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
       
-      // ★入金プルダウン生成（削除機能付き）
-      // 古い表記が入っていても、プルダウン上では正しい項目を選択済みに見せるロジック追加
+      // ▼▼▼ 色分けクラス適用 ▼▼▼
+      let statusClass = "";
+      if (statusStr === "初回面談") {
+          statusClass = "status-red";
+      } else if (statusStr.includes("ヵ月面談")) {
+          statusClass = "status-blue";
+      } else if (statusStr === "満期面談") {
+          statusClass = "status-orange";
+      }
+
       let displayVal = paymentVal;
       if (normalizeMap[paymentVal]) {
           displayVal = normalizeMap[paymentVal];
       }
 
       const paymentOptions = [
-          { val: "", label: "未 (削除)" }, // 削除用
+          { val: "", label: "未 (削除)" }, 
           { val: "銀振一括", label: "💰 銀振一括" },
           { val: "クレカ一括", label: "💳 クレカ一括" },
           { val: "クレカ 6分割", label: "💳 分割6回" },
@@ -628,7 +647,6 @@
       ];
       let paymentSelectHtml = `<select class="common-select" onclick="event.stopPropagation()" onchange="updatePayment('${row[2]}', '${row[3]}', '${name}', this.value)">`;
       paymentOptions.forEach(opt => {
-          // 正規化後の値で比較してselectedをつける
           const isSelected = displayVal === opt.val ? "selected" : "";
           paymentSelectHtml += `<option value="${opt.val}" ${isSelected}>${opt.label}</option>`;
       });
@@ -643,7 +661,7 @@
       });
       methodSelectHtml += `</select>`;
 
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td>${row[5]}</td><td>${methodSelectHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td><td>${paymentSelectHtml}</td>`;
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td class="${statusClass}">${row[5]}</td><td>${methodSelectHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td><td>${paymentSelectHtml}</td>`;
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
