@@ -21,11 +21,37 @@
     .calendar-nav-btn { background: #f0f2f5; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-weight: bold; color: #555; }
     .calendar-nav-btn:hover { background: #e4e6eb; }
     .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 15px; }
-    .cal-cell { aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 8px; cursor: pointer; font-size: 14px; color: #333; position: relative; background: #fff; border: 1px solid transparent; }
+    
+    /* ▼▼▼ 修正：アスペクト比を削除し、高さを固定してコンパクト化 ▼▼▼ */
+    .cal-cell { 
+        height: 60px; /* ここを固定値にすることで縦幅を圧縮 */
+        display: flex; 
+        flex-direction: column; 
+        justify-content: center; 
+        align-items: center; 
+        border-radius: 8px; 
+        cursor: pointer; 
+        font-size: 14px; 
+        color: #333; 
+        position: relative; 
+        background: #fff; 
+        border: 1px solid transparent; 
+    }
     .cal-cell:hover { filter: brightness(0.95); }
+    
     .cal-sat { background-color: #eff6ff; color: #1e40af; }
     .cal-sun { background-color: #fef2f2; color: #991b1b; }
-    .cal-head { font-size: 12px; color: #888; font-weight: normal; cursor: default; background:none !important;}
+    
+    /* ▼▼▼ 修正：ヘッダー（曜日）はさらに薄く ▼▼▼ */
+    .cal-head { 
+        height: 30px; /* 曜日はさらにコンパクトに */
+        font-size: 12px; 
+        color: #888; 
+        font-weight: normal; 
+        cursor: default; 
+        background:none !important;
+    }
+    
     .cal-today { border: 2px solid #2563eb; font-weight: bold; }
     .cal-selected { background-color: #2563eb !important; color: #fff !important; border-color: #2563eb; }
     .cal-has-event::after { content: ""; position: absolute; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; background-color: #ef4444; }
@@ -123,19 +149,10 @@
         justify-content: space-between;
     }
 
-    /* ▼▼▼ 追加：ステータス色分け用クラス ▼▼▼ */
-    .status-red {
-        color: #e11d48; /* 濃い赤 */
-        font-weight: bold;
-    }
-    .status-blue {
-        color: #2563eb; /* 鮮やかな青 */
-        font-weight: bold;
-    }
-    .status-orange {
-        color: #d97706; /* 濃いオレンジ */
-        font-weight: bold;
-    }
+    /* ステータス色分け */
+    .status-red { color: #e11d48; font-weight: bold; }
+    .status-blue { color: #2563eb; font-weight: bold; }
+    .status-orange { color: #d97706; font-weight: bold; }
 
     /* --- Box --- */
     .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; }
@@ -620,7 +637,6 @@
       
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
       
-      // ▼▼▼ 色分けクラス適用 ▼▼▼
       let statusClass = "";
       if (statusStr === "初回面談") {
           statusClass = "status-red";
