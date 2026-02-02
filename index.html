@@ -287,7 +287,7 @@
               </div>
               <button class="assign-btn" id="btnAssignStaff" style="flex:2;">🎲 担当を割り振る</button>
           </div>
-          <div style="font-size:11px; color:#666; margin-top:5px;">※表示中の日付に対して実行します</div>
+          <div style="font-size:11px; color:#666; margin-top:5px;">※表示中の日付に対して実行します（ツール内保存）</div>
       </div>
     </div>
 
@@ -357,7 +357,6 @@
   const addMethodEl = document.getElementById("addMethod");
   const paymentSummaryBox = document.getElementById("paymentSummaryBox");
   const paymentDetailList = document.getElementById("paymentDetailList");
-  // 追加
   const assignStaffCountEl = document.getElementById("assignStaffCount");
 
   // 名寄せ用マップ
@@ -507,20 +506,102 @@
         }
     };
 
-    // ★担当割り振りボタンの動作
+    // ★担当割り振り（クライアントサイド計算）
     document.getElementById('btnAssignStaff').onclick = async () => {
         if(!currentSelectedDateStr) { alert("カレンダーから日付を選んでください"); return; }
-        const count = assignStaffCountEl.value;
-        const formattedDate = currentSelectedDateStr.replace(/\./g, '-');
+        const count = parseInt(assignStaffCountEl.value);
+        const formattedDate = currentSelectedDateStr; // YYYY.MM.DD形式のままでOK
         
-        if(!confirm(`【担当割り振り】\n日付: ${formattedDate}\n稼働人数: ${count}人\n\nこの条件で担当を自動割り振りしますか？`)) return;
+        if(!confirm(`【担当割り振り】\n日付: ${formattedDate}\n稼働人数: ${count}人\n\nツール内だけで割り振りを実行しますか？`)) return;
         
-        await callApi("assignStaff", { date: formattedDate, staffCount: count }, "btnAssignStaff", "計算中...");
+        // 1. 対象の予約データを抽出
+        // allDataは [ID, timeStamp, date(yyyy.mm.dd), time(hh:mm), ...]
+        let targets = [];
+        allData.forEach(row => {
+            if(row[2] === formattedDate) { // 日付一致
+                const status = String(row[5]||"");
+                // 削除・キャンセル除外
+                if(status === "削除" || status.includes("キャンセル")) return;
+                
+                // 時間を分に変換
+                const tStr = String(row[3]);
+                const parts = tStr.split(":");
+                const minutes = parseInt(parts[0])*60 + (parseInt(parts[1])||0);
+                
+                // 名前
+                const name = row[12]||row[6]||"なし";
+                
+                targets.push({
+                    row: row,
+                    time: minutes,
+                    name: name,
+                    key: `assign_${row[2]}_${row[3]}_${name}` // キー作成
+                });
+            }
+        });
+        
+        if(targets.length === 0) { alert("割り振り対象の予約がありません"); return; }
+        
+        // 2. 時間順ソート
+        targets.sort((a,b) => a.time - b.time);
+        
+        // 3. アルゴリズム実行
+        let staffState = [];
+        for(let i=1; i<=count; i++) {
+            // Aさん(1), Bさん(2)...
+            staffState.push({ id: i, lastTime: -999, count: 0 });
+        }
+        
+        let assignedCount = 0;
+        
+        targets.forEach(task => {
+            // 候補者スコアリング
+            let candidates = staffState.map(s => {
+                let penalty = 0;
+                // 連続回避 (60分以内)
+                if (task.time - s.lastTime <= 60) penalty += 10000;
+                // 休憩確保 (120分以内)
+                if (task.time - s.lastTime <= 120) penalty += 500;
+                // 平準化
+                penalty += (s.count * 100);
+                // ランダム性
+                penalty += Math.floor(Math.random() * 50);
+                
+                return { id: s.id, penalty: penalty };
+            });
+            
+            // ペナルティ低い順
+            candidates.sort((a,b) => a.penalty - b.penalty);
+            
+            const winnerId = candidates[0].id;
+            const winnerState = staffState.find(s => s.id === winnerId);
+            
+            winnerState.lastTime = task.time;
+            winnerState.count++;
+            
+            // IDをアルファベットに変換 (1->A, 2->B...)
+            const char = String.fromCharCode(64 + winnerId) + "さん";
+            
+            // 4. ローカルストレージに保存
+            localStorage.setItem(task.key, char);
+            assignedCount++;
+        });
+        
+        alert(`${assignedCount}件の割り振りが完了しました！`);
+        // 再描画
+        loadData();
     };
   }
 
   window.updatePayment = async (date, time, name, value) => {
       await callApi("updatePayment", { date: date, time: time, name: name, method: value }, "null", "更新中...");
+  };
+
+  // 担当者手動変更（ローカルストレージ更新）
+  window.updateAssignLocal = (date, time, name, value) => {
+      const key = `assign_${date}_${time}_${name}`;
+      localStorage.setItem(key, value);
+      // 再描画は不要（セレクトボックスが変わっているため）
   };
 
   async function callApi(action, params, btnId, loadingText) {
@@ -722,10 +803,21 @@
       });
       methodSelectHtml += `</select>`;
 
-      // ★担当列(row[22])の表示を追加
-      const assignedStaff = row[22] || "-";
+      // ★担当列(ローカルストレージから取得)
+      const assignKey = `assign_${row[2]}_${row[3]}_${name}`;
+      const currentAssign = localStorage.getItem(assignKey) || "";
+      const staffList = ["Aさん", "Bさん", "Cさん", "Dさん", "Eさん", "Fさん", "Gさん", "Hさん"];
+      
+      let assignSelectHtml = `<select class="common-select" style="min-width:60px;" onclick="event.stopPropagation()" onchange="updateAssignLocal('${row[2]}', '${row[3]}', '${name}', this.value)">`;
+      assignSelectHtml += `<option value="" ${currentAssign === "" ? "selected" : ""}>-</option>`;
+      
+      staffList.forEach(staff => {
+          const isSelected = currentAssign === staff ? "selected" : "";
+          assignSelectHtml += `<option value="${staff}" ${isSelected}>${staff}</option>`;
+      });
+      assignSelectHtml += `</select>`;
 
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td class="${statusClass}">${row[5]}</td><td>${methodSelectHtml}</td><td>${assignedStaff}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td><td>${paymentSelectHtml}</td>`;
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td class="${statusClass}">${row[5]}</td><td>${methodSelectHtml}</td><td>${assignSelectHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td><td>${paymentSelectHtml}</td>`;
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
