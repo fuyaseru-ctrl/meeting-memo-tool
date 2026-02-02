@@ -341,7 +341,7 @@
               </div>
               <button class="assign-btn" id="btnAssignStaff" style="flex:2;">🎲 担当を割り振る</button>
           </div>
-          <div style="font-size:11px; color:#666; margin-top:5px;">※「営業担当リスト」のみ対象（ツール内保存）</div>
+          <div style="font-size:11px; color:#666; margin-top:5px;">※「営業担当リスト」のみ対象（W列に保存）</div>
       </div>
     </div>
 
@@ -588,72 +588,15 @@
         }
     };
 
+    // 担当割り振り（GAS経由）
     document.getElementById('btnAssignStaff').onclick = async () => {
         if(!currentSelectedDateStr) { alert("カレンダーから日付を選んでください"); return; }
         const count = parseInt(assignStaffCountEl.value);
-        const formattedDate = currentSelectedDateStr; 
+        const formattedDate = currentSelectedDateStr.replace(/\./g, '-');
         
         if(!confirm(`【担当割り振り】\n日付: ${formattedDate}\n稼働人数: ${count}人\n\n「予約確定」のデータのみ割り振りますか？`)) return;
         
-        let targets = [];
-        allData.forEach(row => {
-            const rowDate = String(row[2]);
-            if(rowDate && rowDate.includes(formattedDate)) { 
-                const status = String(row[5]||"");
-                
-                if (status !== "予約確定" && status !== "予約確定（手動追加）") return;
-                
-                const tStr = String(row[3]);
-                const parts = tStr.split(":");
-                const minutes = parseInt(parts[0])*60 + (parseInt(parts[1])||0);
-                
-                const name = row[12]||row[6]||"なし";
-                
-                targets.push({
-                    row: row,
-                    time: minutes,
-                    name: name,
-                    key: `assign_${row[2]}_${row[3]}_${name}`
-                });
-            }
-        });
-        
-        if(targets.length === 0) { alert("割り振り対象の「予約確定」データがありませんでした"); return; }
-        
-        targets.sort((a,b) => a.time - b.time);
-        
-        let staffState = [];
-        for(let i=1; i<=count; i++) {
-            staffState.push({ id: i, lastTime: -999, count: 0 });
-        }
-        
-        let assignedCount = 0;
-        
-        targets.forEach(task => {
-            let candidates = staffState.map(s => {
-                let penalty = 0;
-                if (task.time - s.lastTime <= 60) penalty += 10000;
-                if (task.time - s.lastTime <= 120) penalty += 500;
-                penalty += (s.count * 100);
-                penalty += Math.floor(Math.random() * 50);
-                return { id: s.id, penalty: penalty };
-            });
-            
-            candidates.sort((a,b) => a.penalty - b.penalty);
-            const winnerId = candidates[0].id;
-            const winnerState = staffState.find(s => s.id === winnerId);
-            winnerState.lastTime = task.time;
-            winnerState.count++;
-            
-            const char = String.fromCharCode(64 + winnerId) + "さん";
-            localStorage.setItem(task.key, char);
-            assignedCount++;
-        });
-        
-        alert(`${assignedCount}件の割り振りが完了しました！\n（表示を更新します）`);
-        
-        if (currentSelectedDateStr) filterListByDate(currentSelectedDateStr);
-        else renderList(sortDataByDateDesc(allData));
+        await callApi("assignStaff", { date: formattedDate, staffCount: count }, "btnAssignStaff", "計算中...");
     };
   }
 
@@ -661,9 +604,9 @@
       await callApi("updatePayment", { date: date, time: time, name: name, method: value }, "null", "更新中...");
   };
 
-  window.updateAssignLocal = (date, time, name, value) => {
-      const key = `assign_${date}_${time}_${name}`;
-      localStorage.setItem(key, value);
+  // 担当者手動変更（GAS経由）
+  window.updateAssign = async (date, time, name, value) => {
+      await callApi("updateAssign", { date: date, time: time, name: name, staff: value }, "null", "更新中...");
   };
 
   async function callApi(action, params, btnId, loadingText) {
@@ -747,7 +690,7 @@
         renderCalendar();
         document.getElementById('loading').style.display = 'none';
         
-        // 分割時はテーブルを全表示
+        // テーブル全表示
         document.getElementById('salesTable').style.display = 'table';
         document.getElementById('supportTable').style.display = 'table';
         document.getElementById('canceledTable').style.display = 'table';
@@ -785,7 +728,7 @@
     }
   }
 
-  // ▼▼▼ 修正：renderListを3分割対応 ▼▼▼
+  // リスト描画（3分割対応・担当W列・入金U列）
   function renderList(data, isFiltered=false) {
     const salesTbody = document.getElementById('salesTableBody');
     const supportTbody = document.getElementById('supportTableBody');
@@ -827,11 +770,10 @@
 
     data.forEach(row => {
       const statusStr = String(row[5] || "");
-      if (statusStr === "削除") return; // 削除ステータスは完全非表示
+      if (statusStr === "削除") return; 
 
       const tr = document.createElement('tr'); tr.className = "clickable";
       
-      // キャンセルのスタイル
       if (statusStr.includes("キャンセル")) {
           tr.classList.add("row-canceled");
       }
@@ -883,11 +825,11 @@
       });
       methodSelectHtml += `</select>`;
 
-      const assignKey = `assign_${row[2]}_${row[3]}_${name}`;
-      const currentAssign = localStorage.getItem(assignKey) || "";
+      // ★担当列(row[22]=W列)をプルダウンに
+      const currentAssign = row[22] || ""; 
       const staffList = ["Aさん", "Bさん", "Cさん", "Dさん", "Eさん", "Fさん", "Gさん", "Hさん"];
       
-      let assignSelectHtml = `<select class="common-select" style="min-width:60px;" onclick="event.stopPropagation()" onchange="updateAssignLocal('${row[2]}', '${row[3]}', '${name}', this.value)">`;
+      let assignSelectHtml = `<select class="common-select" style="min-width:60px;" onclick="event.stopPropagation()" onchange="updateAssign('${row[2]}', '${row[3]}', '${name}', this.value)">`;
       assignSelectHtml += `<option value="" ${currentAssign === "" ? "selected" : ""}>-</option>`;
       staffList.forEach(staff => {
           const isSelected = currentAssign === staff ? "selected" : "";
@@ -911,7 +853,7 @@
         if(window.innerWidth < 600) document.getElementById('toolBox').scrollIntoView({behavior:"smooth"});
       };
 
-      // ★ステータス判定による3分割
+      // 3分割振り分け
       if (statusStr.includes("キャンセル")) {
           canceledFragment.appendChild(tr);
           hasCanceled = true;
