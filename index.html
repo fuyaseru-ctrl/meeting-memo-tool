@@ -290,7 +290,7 @@
               </div>
               <button class="assign-btn" id="btnAssignStaff" style="flex:2;">🎲 担当を割り振る</button>
           </div>
-          <div style="font-size:11px; color:#666; margin-top:5px;">※表示中の日付に対して実行します（ツール内保存）</div>
+          <div style="font-size:11px; color:#666; margin-top:5px;">※「予約確定」のみ対象とします（ツール内保存）</div>
       </div>
     </div>
 
@@ -418,11 +418,9 @@
     document.getElementById('copyAllBtn').onclick = () => copyText(buildFullMessage(), "全文コピー完了");
     document.getElementById('copyDateBtn').onclick = () => copyText(buildDateBox(), "日時コピー完了");
     
-    // ▼▼▼ 修正：リマインド文コピー処理（安全装置付き） ▼▼▼
     document.getElementById('btnCopyReminder').onclick = () => {
         if (!selectedCustomerName) { alert("リストから人を選んでください"); return; }
         
-        // 予約日時を整形
         const v = dateEl.value; 
         const tVal = timeEl.value;
         if(!v) { alert("日付が無効です"); return; }
@@ -437,19 +435,14 @@
         const formattedDateTime = `${y}年${m}月${dt}日(${w}) ${timeStr}`;
         const meetUrl = selectedMeetUrl || "（URL未発行）";
 
-        // リマインド文テンプレート
         const reminderText = `${selectedCustomerName}様：ご予約【 30分前 】です。参加URLをご確認ください\n\n\nフヤセルサポートです。\n\n━━━━━━━━━━━━━\nフヤセル式\nマンツーマンサポート\n━━━━━━━━━━━━━\n\n◇ 予約日時\n◆◆◆ー予約日時記入ー◆◆◆\n${formattedDateTime}\n\n開始時間、\n「３０分前」になりましたので\nGoogle Meet 参加用のURLを\nお送りさせていただきます。\n\n\n▼コチラからご参加ください\n${meetUrl}\n\n予約時間になりましたら\nURLをクリックして\nMeetにご参加ください。\n\n※ PCでのご利用 ※\nPCでご利用になる場合は\nこちらのリンクを\nPCでログイン済みのブラウザに\n張り付けてご利用ください。\n\n\nエラベル×マワセル＝フヤセル\n\n\nこのマンツーマンサポートは\nもっと資産を増やしたい！\n\n「そんな人のための６０分」\n\n\n現時点でご不明点などは\nごさいませんでしょうか。\n\n何かございましたら\nお気軽にご連絡ください。\n\n\nそれでは、\n${selectedCustomerName}様とお話できること\n楽しみにしております。\n\n本日はどうぞ、\nよろしくお願いいたします。\n\n※※無断キャンセル厳禁※※\n\n何かしらのご事情で\nご参加が難しいという場合は\n事前にご一報ください。\n\nご協力のほど、\nよろしくお願いいたします。`;
 
-        // コピー実行
         copyText(reminderText, "リマインド文をコピーしました！（データクリア済み）");
 
-        // ★追加：即座にデータをクリアし、選択状態を解除する（誤送信防止）
         selectedCustomerName = "";
         selectedMeetUrl = "";
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         nameDisplay.textContent = "";
-        // プレビューなども初期化したい場合はここに追加
-        // previewEl.value = ""; 
     };
 
     dateEl.onchange = renderPreview;
@@ -545,19 +538,22 @@
         }
     };
 
+    // ★修正：担当割り振り（予約確定のみ対象）
     document.getElementById('btnAssignStaff').onclick = async () => {
         if(!currentSelectedDateStr) { alert("カレンダーから日付を選んでください"); return; }
         const count = parseInt(assignStaffCountEl.value);
         const formattedDate = currentSelectedDateStr; 
         
-        if(!confirm(`【担当割り振り】\n日付: ${formattedDate}\n稼働人数: ${count}人\n\nツール内だけで割り振りを実行しますか？`)) return;
+        if(!confirm(`【担当割り振り】\n日付: ${formattedDate}\n稼働人数: ${count}人\n\n「予約確定」のデータのみ割り振りますか？`)) return;
         
         let targets = [];
         allData.forEach(row => {
             const rowDate = String(row[2]);
             if(rowDate && rowDate.includes(formattedDate)) { 
                 const status = String(row[5]||"");
-                if(status === "削除" || status.includes("キャンセル")) return;
+                
+                // ★修正点：対象ステータスを「予約確定」系のみに限定
+                if (status !== "予約確定" && status !== "予約確定（手動追加）") return;
                 
                 const tStr = String(row[3]);
                 const parts = tStr.split(":");
@@ -574,7 +570,7 @@
             }
         });
         
-        if(targets.length === 0) { alert("割り振り対象の予約がありませんでした\n（または日付が正しく選択されていません）"); return; }
+        if(targets.length === 0) { alert("割り振り対象の「予約確定」データがありませんでした"); return; }
         
         targets.sort((a,b) => a.time - b.time);
         
@@ -820,7 +816,6 @@
       });
       methodSelectHtml += `</select>`;
 
-      // ★担当列(ローカルストレージから取得)
       const assignKey = `assign_${row[2]}_${row[3]}_${name}`;
       const currentAssign = localStorage.getItem(assignKey) || "";
       const staffList = ["Aさん", "Bさん", "Cさん", "Dさん", "Eさん", "Fさん", "Gさん", "Hさん"];
@@ -843,7 +838,6 @@
         selectedCustomerName = name;
         nameDisplay.textContent = `選択中: ${name}`;
         
-        // ★修正：MeetURLもここで取得して保存しておく
         selectedMeetUrl = row[18];
 
         const currentMethod = localStorage.getItem(methodKey) || "Google Meet";
