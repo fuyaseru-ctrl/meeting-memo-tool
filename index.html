@@ -22,9 +22,8 @@
     .calendar-nav-btn:hover { background: #e4e6eb; }
     .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 15px; }
     
-    /* ▼▼▼ 修正：アスペクト比を削除し、高さを固定してコンパクト化 ▼▼▼ */
     .cal-cell { 
-        height: 60px; /* ここを固定値にすることで縦幅を圧縮 */
+        height: 60px;
         display: flex; 
         flex-direction: column; 
         justify-content: center; 
@@ -42,9 +41,8 @@
     .cal-sat { background-color: #eff6ff; color: #1e40af; }
     .cal-sun { background-color: #fef2f2; color: #991b1b; }
     
-    /* ▼▼▼ 修正：ヘッダー（曜日）はさらに薄く ▼▼▼ */
     .cal-head { 
-        height: 30px; /* 曜日はさらにコンパクトに */
+        height: 30px;
         font-size: 12px; 
         color: #888; 
         font-weight: normal; 
@@ -155,7 +153,7 @@
     .status-orange { color: #d97706; font-weight: bold; }
 
     /* --- Box --- */
-    .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; }
+    .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; margin-bottom: 20px; }
     h1 { font-size: 18px; margin: 0 0 16px; display:flex; align-items:center; gap:8px; }
     label { display: block; margin-top: 12px; font-size: 13px; color: #555; }
     input, select, button, textarea { width: 100%; padding: 10px; margin-top: 6px; font-size: 15px; border-radius: 10px; border: 1px solid #d7dbe6; background: #fff; }
@@ -169,6 +167,20 @@
     button.delete-row-btn { background: #b91c1c; color: #fff; margin-top: 10px; }
     button:hover { opacity: .92; }
     
+    /* 担当割り振りエリア用スタイル */
+    .assign-btn {
+        background: #8b5cf6; /* 紫色 */
+        color: #fff;
+    }
+    .assign-area {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+    }
+    .assign-select-wrap {
+        flex: 1;
+    }
+
     textarea { height: 180px; margin-top: 12px; font-size: 14px; line-height: 1.6; font-family: monospace; white-space: pre-wrap; }
     .status { margin-top: 8px; font-size: 12px; color: #0f766e; min-height: 16px; }
     #selectedNameDisplay { font-size:12px; color:#666; position:absolute; top:20px; right:20px; font-weight:bold; }
@@ -214,7 +226,7 @@
               <th>お名前</th>
               <th>ステータス</th>
               <th>面談方式</th>
-              <th>アカウント</th>
+              <th>担当</th> <th>アカウント</th>
               <th>Meet</th>
               <th>コピー</th>
               <th>入金</th>
@@ -257,6 +269,26 @@
       </div>
       
       <button class="delete-row-btn" id="btnDeleteRow">❌ 予約削除</button>
+      
+      <div style="margin-top:20px; padding-top:20px; border-top:1px solid #eee;">
+          <h1>👨‍💻 本日の担当割当</h1>
+          <div class="assign-area">
+              <div class="assign-select-wrap">
+                  <label style="margin-top:0;">稼働人数</label>
+                  <select id="assignStaffCount">
+                      <option value="2">2人</option>
+                      <option value="3">3人</option>
+                      <option value="4" selected>4人</option>
+                      <option value="5">5人</option>
+                      <option value="6">6人</option>
+                      <option value="7">7人</option>
+                      <option value="8">8人</option>
+                  </select>
+              </div>
+              <button class="assign-btn" id="btnAssignStaff" style="flex:2;">🎲 担当を割り振る</button>
+          </div>
+          <div style="font-size:11px; color:#666; margin-top:5px;">※表示中の日付に対して実行します</div>
+      </div>
     </div>
 
     <div class="box" id="addBox">
@@ -325,6 +357,8 @@
   const addMethodEl = document.getElementById("addMethod");
   const paymentSummaryBox = document.getElementById("paymentSummaryBox");
   const paymentDetailList = document.getElementById("paymentDetailList");
+  // 追加
+  const assignStaffCountEl = document.getElementById("assignStaffCount");
 
   // 名寄せ用マップ
   const normalizeMap = {
@@ -472,6 +506,17 @@
             btn.textContent = "❌ 予約削除"; btn.disabled = false;
         }
     };
+
+    // ★担当割り振りボタンの動作
+    document.getElementById('btnAssignStaff').onclick = async () => {
+        if(!currentSelectedDateStr) { alert("カレンダーから日付を選んでください"); return; }
+        const count = assignStaffCountEl.value;
+        const formattedDate = currentSelectedDateStr.replace(/\./g, '-');
+        
+        if(!confirm(`【担当割り振り】\n日付: ${formattedDate}\n稼働人数: ${count}人\n\nこの条件で担当を自動割り振りしますか？`)) return;
+        
+        await callApi("assignStaff", { date: formattedDate, staffCount: count }, "btnAssignStaff", "計算中...");
+    };
   }
 
   window.updatePayment = async (date, time, name, value) => {
@@ -596,7 +641,7 @@
   function renderList(data, isFiltered=false) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = "";
-    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='9' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
+    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='10' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
     
     const fragment = document.createDocumentFragment();
     
@@ -677,7 +722,10 @@
       });
       methodSelectHtml += `</select>`;
 
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td class="${statusClass}">${row[5]}</td><td>${methodSelectHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td><td>${paymentSelectHtml}</td>`;
+      // ★担当列(row[22])の表示を追加
+      const assignedStaff = row[22] || "-";
+
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td class="${statusClass}">${row[5]}</td><td>${methodSelectHtml}</td><td>${assignedStaff}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td><td>${paymentSelectHtml}</td>`;
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
