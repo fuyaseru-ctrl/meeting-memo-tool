@@ -344,7 +344,7 @@
   let calDate = new Date(); 
   let currentSelectedDateStr = "";
   let selectedCustomerName = ""; 
-  let selectedMeetUrl = ""; // ★追加：選択されたMeetURLを保存
+  let selectedMeetUrl = ""; 
   const week = ["日","月","火","水","木","金","土"];
   
   const dateEl = document.getElementById("date");
@@ -418,11 +418,11 @@
     document.getElementById('copyAllBtn').onclick = () => copyText(buildFullMessage(), "全文コピー完了");
     document.getElementById('copyDateBtn').onclick = () => copyText(buildDateBox(), "日時コピー完了");
     
-    // ★追加：リマインド文コピー機能
+    // ▼▼▼ 修正：リマインド文コピー処理（安全装置付き） ▼▼▼
     document.getElementById('btnCopyReminder').onclick = () => {
         if (!selectedCustomerName) { alert("リストから人を選んでください"); return; }
         
-        // 予約日時を整形 (例: 2026年2月9日(月) 11:00)
+        // 予約日時を整形
         const v = dateEl.value; 
         const tVal = timeEl.value;
         if(!v) { alert("日付が無効です"); return; }
@@ -440,7 +440,16 @@
         // リマインド文テンプレート
         const reminderText = `${selectedCustomerName}様：ご予約【 30分前 】です。参加URLをご確認ください\n\n\nフヤセルサポートです。\n\n━━━━━━━━━━━━━\nフヤセル式\nマンツーマンサポート\n━━━━━━━━━━━━━\n\n◇ 予約日時\n◆◆◆ー予約日時記入ー◆◆◆\n${formattedDateTime}\n\n開始時間、\n「３０分前」になりましたので\nGoogle Meet 参加用のURLを\nお送りさせていただきます。\n\n\n▼コチラからご参加ください\n${meetUrl}\n\n予約時間になりましたら\nURLをクリックして\nMeetにご参加ください。\n\n※ PCでのご利用 ※\nPCでご利用になる場合は\nこちらのリンクを\nPCでログイン済みのブラウザに\n張り付けてご利用ください。\n\n\nエラベル×マワセル＝フヤセル\n\n\nこのマンツーマンサポートは\nもっと資産を増やしたい！\n\n「そんな人のための６０分」\n\n\n現時点でご不明点などは\nごさいませんでしょうか。\n\n何かございましたら\nお気軽にご連絡ください。\n\n\nそれでは、\n${selectedCustomerName}様とお話できること\n楽しみにしております。\n\n本日はどうぞ、\nよろしくお願いいたします。\n\n※※無断キャンセル厳禁※※\n\n何かしらのご事情で\nご参加が難しいという場合は\n事前にご一報ください。\n\nご協力のほど、\nよろしくお願いいたします。`;
 
-        copyText(reminderText, "リマインド文をコピーしました！");
+        // コピー実行
+        copyText(reminderText, "リマインド文をコピーしました！（データクリア済み）");
+
+        // ★追加：即座にデータをクリアし、選択状態を解除する（誤送信防止）
+        selectedCustomerName = "";
+        selectedMeetUrl = "";
+        document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
+        nameDisplay.textContent = "";
+        // プレビューなども初期化したい場合はここに追加
+        // previewEl.value = ""; 
     };
 
     dateEl.onchange = renderPreview;
@@ -811,6 +820,7 @@
       });
       methodSelectHtml += `</select>`;
 
+      // ★担当列(ローカルストレージから取得)
       const assignKey = `assign_${row[2]}_${row[3]}_${name}`;
       const currentAssign = localStorage.getItem(assignKey) || "";
       const staffList = ["Aさん", "Bさん", "Cさん", "Dさん", "Eさん", "Fさん", "Gさん", "Hさん"];
