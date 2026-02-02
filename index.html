@@ -64,7 +64,21 @@
 
     .search-area { margin-bottom: 10px; }
     .search-area input { margin-top: 0; }
-    .table-wrapper { max-height: 500px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
+    
+    /* ▼▼▼ テーブル分割用のスタイル ▼▼▼ */
+    .table-section-title {
+        margin: 30px 0 10px;
+        font-size: 1.1em;
+        font-weight: bold;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 8px;
+    }
+    .table-wrapper { max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; margin-bottom: 20px; }
+    
     table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 13px; }
     th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; vertical-align: middle; }
     th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 1; }
@@ -78,12 +92,10 @@
     .meet-link:hover { background: #bfdbfe; }
     .account-badge { font-size: 11px; color: #666; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; display: inline-block; }
     
-    /* コピーボタン */
     .copy-link-btn { padding: 4px 8px; background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 14px; }
     .copy-link-btn:hover { background: #e5e7eb; }
     .copy-link-btn:active { background: #d1d5db; }
 
-    /* キャンセル行 */
     tr.row-canceled {
         background-color: #f3f4f6 !important; 
         color: #a3a3a3 !important;             
@@ -95,16 +107,14 @@
         opacity: 0.5;
     }
 
-    /* ★入金済み行（ゴールド） */
     tr.row-paid {
-        background-color: #fffbeb !important; /* 薄いゴールド */
+        background-color: #fffbeb !important; 
         color: #92400e !important;
     }
     tr.row-paid td {
         border-bottom-color: #fcd34d !important;
     }
 
-    /* プルダウン共通スタイル */
     .common-select {
         padding: 4px;
         border: 1px solid #ddd;
@@ -117,7 +127,6 @@
     }
     .common-select:hover { border-color: #aaa; }
 
-    /* 入金件数表示エリア */
     .payment-summary-box {
         margin-top: 15px;
         padding: 15px;
@@ -147,7 +156,6 @@
         justify-content: space-between;
     }
 
-    /* ステータス色分け */
     .status-red { color: #e11d48; font-weight: bold; }
     .status-blue { color: #2563eb; font-weight: bold; }
     .status-orange { color: #d97706; font-weight: bold; }
@@ -167,9 +175,8 @@
     button.delete-row-btn { background: #b91c1c; color: #fff; margin-top: 10px; }
     button:hover { opacity: .92; }
     
-    /* 担当割り振りエリア用スタイル */
     .assign-btn {
-        background: #8b5cf6; /* 紫色 */
+        background: #8b5cf6; 
         color: #fff;
     }
     .assign-area {
@@ -217,8 +224,9 @@
       <div class="search-area"><input type="text" id="searchInput" placeholder="名前で検索..."></div>
       <div id="loading" style="font-size:12px; color:#666;">読み込み中...</div>
 
+      <div class="table-section-title">👨‍💼 営業担当リスト <span style="font-size:12px; font-weight:normal; color:#666;">(予約確定)</span></div>
       <div class="table-wrapper">
-        <table id="customerTable" style="display:none;">
+        <table id="salesTable">
           <thead>
             <tr>
               <th>来店日</th>
@@ -233,9 +241,31 @@
               <th>入金</th>
             </tr>
           </thead>
-          <tbody id="tableBody"></tbody>
+          <tbody id="salesTableBody"></tbody>
         </table>
       </div>
+
+      <div class="table-section-title">🤝 サポート担当リスト <span style="font-size:12px; font-weight:normal; color:#666;">(初回・定期面談・その他)</span></div>
+      <div class="table-wrapper">
+        <table id="supportTable">
+          <thead>
+            <tr>
+              <th>来店日</th>
+              <th>時間</th>
+              <th>お名前</th>
+              <th>ステータス</th>
+              <th>面談方式</th>
+              <th>担当</th>
+              <th>アカウント</th>
+              <th>Meet</th>
+              <th>コピー</th>
+              <th>入金</th>
+            </tr>
+          </thead>
+          <tbody id="supportTableBody"></tbody>
+        </table>
+      </div>
+
     </div>
   </div>
 
@@ -290,7 +320,7 @@
               </div>
               <button class="assign-btn" id="btnAssignStaff" style="flex:2;">🎲 担当を割り振る</button>
           </div>
-          <div style="font-size:11px; color:#666; margin-top:5px;">※「予約確定」のみ対象とします（ツール内保存）</div>
+          <div style="font-size:11px; color:#666; margin-top:5px;">※「営業担当リスト」のみ対象（ツール内保存）</div>
       </div>
     </div>
 
@@ -363,7 +393,6 @@
   const paymentDetailList = document.getElementById("paymentDetailList");
   const assignStaffCountEl = document.getElementById("assignStaffCount");
 
-  // 名寄せ用マップ
   const normalizeMap = {
       "クレカ分割 6分割": "クレカ 6分割",
       "クレカ分割 12分割": "クレカ 12分割",
@@ -538,7 +567,6 @@
         }
     };
 
-    // ★修正：担当割り振り（予約確定のみ対象）
     document.getElementById('btnAssignStaff').onclick = async () => {
         if(!currentSelectedDateStr) { alert("カレンダーから日付を選んでください"); return; }
         const count = parseInt(assignStaffCountEl.value);
@@ -552,7 +580,7 @@
             if(rowDate && rowDate.includes(formattedDate)) { 
                 const status = String(row[5]||"");
                 
-                // ★修正点：対象ステータスを「予約確定」系のみに限定
+                // 予約確定系のみ抽出
                 if (status !== "予約確定" && status !== "予約確定（手動追加）") return;
                 
                 const tStr = String(row[3]);
@@ -698,7 +726,11 @@
         else renderList(sortDataByDateDesc(allData)); 
         renderCalendar();
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('customerTable').style.display = 'table';
+        
+        // 分割時はテーブルを両方表示
+        document.getElementById('salesTable').style.display = 'table';
+        document.getElementById('supportTable').style.display = 'table';
+        
     }).catch(err => {
         document.getElementById('loading').textContent = "読み込みエラー";
         alert("データの読み込みに失敗しました。");
@@ -732,13 +764,28 @@
     }
   }
 
+  // ▼▼▼ 修正：renderListを分割対応 ▼▼▼
   function renderList(data, isFiltered=false) {
-    const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = "";
-    if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='10' style='text-align:center; color:#999;'>なし</td></tr>"; return; }
+    const salesTbody = document.getElementById('salesTableBody');
+    const supportTbody = document.getElementById('supportTableBody');
     
-    const fragment = document.createDocumentFragment();
+    salesTbody.innerHTML = "";
+    supportTbody.innerHTML = "";
     
+    // データがない場合の表示
+    if(data.length === 0) { 
+        salesTbody.innerHTML = "<tr><td colspan='10' style='text-align:center; color:#999;'>なし</td></tr>";
+        supportTbody.innerHTML = "<tr><td colspan='10' style='text-align:center; color:#999;'>なし</td></tr>";
+        return; 
+    }
+    
+    const salesFragment = document.createDocumentFragment();
+    const supportFragment = document.createDocumentFragment();
+    
+    // 該当する行があったかどうかのフラグ
+    let hasSales = false;
+    let hasSupport = false;
+
     const today = new Date();
     const todayStr = `${today.getFullYear()}.${('0'+(today.getMonth()+1)).slice(-2)}.${('0'+today.getDate()).slice(-2)}`;
     const highlight = isFiltered && (currentSelectedDateStr === todayStr);
@@ -777,18 +824,12 @@
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
       
       let statusClass = "";
-      if (statusStr === "初回面談") {
-          statusClass = "status-red";
-      } else if (statusStr.includes("ヵ月面談")) {
-          statusClass = "status-blue";
-      } else if (statusStr === "満期面談") {
-          statusClass = "status-orange";
-      }
+      if (statusStr === "初回面談") statusClass = "status-red";
+      else if (statusStr.includes("ヵ月面談")) statusClass = "status-blue";
+      else if (statusStr === "満期面談") statusClass = "status-orange";
 
       let displayVal = paymentVal;
-      if (normalizeMap[paymentVal]) {
-          displayVal = normalizeMap[paymentVal];
-      }
+      if (normalizeMap[paymentVal]) displayVal = normalizeMap[paymentVal];
 
       const paymentOptions = [
           { val: "", label: "未 (削除)" }, 
@@ -822,7 +863,6 @@
       
       let assignSelectHtml = `<select class="common-select" style="min-width:60px;" onclick="event.stopPropagation()" onchange="updateAssignLocal('${row[2]}', '${row[3]}', '${name}', this.value)">`;
       assignSelectHtml += `<option value="" ${currentAssign === "" ? "selected" : ""}>-</option>`;
-      
       staffList.forEach(staff => {
           const isSelected = currentAssign === staff ? "selected" : "";
           assignSelectHtml += `<option value="${staff}" ${isSelected}>${staff}</option>`;
@@ -837,19 +877,29 @@
         if(row[3]) timeEl.value = String(parseInt(row[3]));
         selectedCustomerName = name;
         nameDisplay.textContent = `選択中: ${name}`;
-        
         selectedMeetUrl = row[18];
-
         const currentMethod = localStorage.getItem(methodKey) || "Google Meet";
         const methodEl = document.getElementById("method");
         methodEl.value = currentMethod;
-
         renderPreview();
         if(window.innerWidth < 600) document.getElementById('toolBox').scrollIntoView({behavior:"smooth"});
       };
-      fragment.appendChild(tr);
+
+      // ★ステータス判定による振り分け
+      if (statusStr.includes("予約確定")) {
+          salesFragment.appendChild(tr);
+          hasSales = true;
+      } else {
+          supportFragment.appendChild(tr);
+          hasSupport = true;
+      }
     });
-    tbody.appendChild(fragment);
+
+    if(!hasSales) salesTbody.innerHTML = "<tr><td colspan='10' style='text-align:center; color:#999;'>なし</td></tr>";
+    else salesTbody.appendChild(salesFragment);
+
+    if(!hasSupport) supportTbody.innerHTML = "<tr><td colspan='10' style='text-align:center; color:#999;'>なし</td></tr>";
+    else supportTbody.appendChild(supportFragment);
   }
 
   window.updateMethod = (key, value) => {
