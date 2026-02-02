@@ -506,19 +506,20 @@
         }
     };
 
-    // ★担当割り振り（クライアントサイド計算）
+    // ★担当割り振り（修正版）
     document.getElementById('btnAssignStaff').onclick = async () => {
         if(!currentSelectedDateStr) { alert("カレンダーから日付を選んでください"); return; }
         const count = parseInt(assignStaffCountEl.value);
-        const formattedDate = currentSelectedDateStr; // YYYY.MM.DD形式のままでOK
+        const formattedDate = currentSelectedDateStr; // YYYY.MM.DD形式
         
         if(!confirm(`【担当割り振り】\n日付: ${formattedDate}\n稼働人数: ${count}人\n\nツール内だけで割り振りを実行しますか？`)) return;
         
-        // 1. 対象の予約データを抽出
-        // allDataは [ID, timeStamp, date(yyyy.mm.dd), time(hh:mm), ...]
+        // 1. 対象の予約データを抽出（※修正：あいまい一致に変更）
         let targets = [];
         allData.forEach(row => {
-            if(row[2] === formattedDate) { // 日付一致
+            const rowDate = String(row[2]);
+            // ★ここを修正：完全一致ではなく、日付を含んでいればOKにする（フォーマット揺らぎ対策）
+            if(rowDate && rowDate.includes(formattedDate)) { 
                 const status = String(row[5]||"");
                 // 削除・キャンセル除外
                 if(status === "削除" || status.includes("キャンセル")) return;
@@ -535,12 +536,12 @@
                     row: row,
                     time: minutes,
                     name: name,
-                    key: `assign_${row[2]}_${row[3]}_${name}` // キー作成
+                    key: `assign_${row[2]}_${row[3]}_${name}`
                 });
             }
         });
         
-        if(targets.length === 0) { alert("割り振り対象の予約がありません"); return; }
+        if(targets.length === 0) { alert("割り振り対象の予約がありませんでした\n（または日付が正しく選択されていません）"); return; }
         
         // 2. 時間順ソート
         targets.sort((a,b) => a.time - b.time);
@@ -548,48 +549,37 @@
         // 3. アルゴリズム実行
         let staffState = [];
         for(let i=1; i<=count; i++) {
-            // Aさん(1), Bさん(2)...
             staffState.push({ id: i, lastTime: -999, count: 0 });
         }
         
         let assignedCount = 0;
         
         targets.forEach(task => {
-            // 候補者スコアリング
             let candidates = staffState.map(s => {
                 let penalty = 0;
-                // 連続回避 (60分以内)
                 if (task.time - s.lastTime <= 60) penalty += 10000;
-                // 休憩確保 (120分以内)
                 if (task.time - s.lastTime <= 120) penalty += 500;
-                // 平準化
                 penalty += (s.count * 100);
-                // ランダム性
                 penalty += Math.floor(Math.random() * 50);
-                
                 return { id: s.id, penalty: penalty };
             });
             
-            // ペナルティ低い順
             candidates.sort((a,b) => a.penalty - b.penalty);
-            
             const winnerId = candidates[0].id;
             const winnerState = staffState.find(s => s.id === winnerId);
-            
             winnerState.lastTime = task.time;
             winnerState.count++;
             
-            // IDをアルファベットに変換 (1->A, 2->B...)
             const char = String.fromCharCode(64 + winnerId) + "さん";
-            
-            // 4. ローカルストレージに保存
             localStorage.setItem(task.key, char);
             assignedCount++;
         });
         
-        alert(`${assignedCount}件の割り振りが完了しました！`);
-        // 再描画
-        loadData();
+        alert(`${assignedCount}件の割り振りが完了しました！\n（表示を更新します）`);
+        
+        // 4. 即時再描画（サーバー読み込みなし）
+        if (currentSelectedDateStr) filterListByDate(currentSelectedDateStr);
+        else renderList(sortDataByDateDesc(allData));
     };
   }
 
@@ -601,7 +591,6 @@
   window.updateAssignLocal = (date, time, name, value) => {
       const key = `assign_${date}_${time}_${name}`;
       localStorage.setItem(key, value);
-      // 再描画は不要（セレクトボックスが変わっているため）
   };
 
   async function callApi(action, params, btnId, loadingText) {
