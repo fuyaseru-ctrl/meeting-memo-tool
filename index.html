@@ -620,10 +620,8 @@
       await callApi("updateMethod", { date: date, time: time, name: name, method: value }, "null", "更新中...");
   };
 
-  // ★追加：電話番号更新（GAS経由）
+  // ★修正：電話番号更新
   window.updatePhone = async (date, time, name, value) => {
-      // 変更があるたびにAPIを叩くのは重い可能性があるので、本来はdebounce（連打防止）推奨だが
-      // 頻繁に変更するものではないと仮定して直接送信
       await callApi("updatePhone", { date: date, time: time, name: name, phone: value }, "null", "保存中...");
   };
 
@@ -833,12 +831,8 @@
       });
       paymentSelectHtml += `</select>`;
 
-      const methodKey = `method_${row[2]}_${row[3]}_${name}`;
-      const savedMethod = localStorage.getItem(methodKey) || "Google Meet";
-      const methodOptions = ["Google Meet", "電話", "LINE", "メール", "その他"];
-      
-      // X列から面談方式を取得
       const currentMethod = row[23] || "Google Meet";
+      const methodOptions = ["Google Meet", "電話", "LINE", "メール", "その他"];
       
       let methodSelectHtml = `<select class="common-select" onclick="event.stopPropagation()" onchange="updateMethod('${row[2]}', '${row[3]}', '${name}', this.value)">`;
       methodOptions.forEach(opt => {
@@ -846,7 +840,6 @@
       });
       methodSelectHtml += `</select>`;
 
-      const assignKey = `assign_${row[2]}_${row[3]}_${name}`;
       const currentAssign = row[22] || ""; 
       const staffList = ["Aさん", "Bさん", "Cさん", "Dさん", "Eさん", "Fさん", "Gさん", "Hさん"];
       
@@ -858,14 +851,17 @@
       });
       assignSelectHtml += `</select>`;
 
-      // ★ここが修正ポイント：電話の場合のアカウント列の表示切り替え
+      // ★ここが最終修正ポイント：電話番号自動表示（優先順位: 保存されたY列 > マスタR列）
       let accountCellHtml = "";
       if (currentMethod === "電話") {
-          // 電話番号入力欄（Y列=row[24]）
-          const phoneVal = row[24] || "";
-          accountCellHtml = `<input type="text" class="phone-input" placeholder="電話番号" value="${phoneVal}" onclick="event.stopPropagation()" onchange="updatePhone('${row[2]}', '${row[3]}', '${name}', this.value)">`;
+          const manualPhone = row[24]; // Y列（保存済み番号）
+          const masterPhone = row[17]; // R列（元データ）
+          
+          // 保存された番号があればそれを、なければ元データの番号を表示
+          const displayPhone = manualPhone || masterPhone || "";
+          
+          accountCellHtml = `<input type="text" class="phone-input" placeholder="電話番号" value="${displayPhone}" onclick="event.stopPropagation()" onchange="updatePhone('${row[2]}', '${row[3]}', '${name}', this.value)">`;
       } else {
-          // 通常のアカウントバッジ
           accountCellHtml = accountBadge;
       }
 
