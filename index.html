@@ -127,6 +127,15 @@
     }
     .common-select:hover { border-color: #aaa; }
 
+    /* 電話番号入力欄 */
+    .phone-input {
+        width: 100px;
+        padding: 4px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
     .payment-summary-box {
         margin-top: 15px;
         padding: 15px;
@@ -554,7 +563,6 @@
         const key = `method_${formattedDate}_${formattedTime}_${n}`;
         localStorage.setItem(key, m);
 
-        // ★新規追加時に面談方式も送信
         await callApi("manualAdd", { date: d, time: t + ":00", name: n, status: s, method: m }, "btnAddManual", "追加中...");
         addNameEl.value = "";
         alert("追加しました！リストを更新します。");
@@ -608,9 +616,15 @@
       await callApi("updateAssign", { date: date, time: time, name: name, staff: value }, "null", "更新中...");
   };
 
-  // ★追加：面談方式手動変更（GAS経由）
   window.updateMethod = async (date, time, name, value) => {
       await callApi("updateMethod", { date: date, time: time, name: name, method: value }, "null", "更新中...");
+  };
+
+  // ★追加：電話番号更新（GAS経由）
+  window.updatePhone = async (date, time, name, value) => {
+      // 変更があるたびにAPIを叩くのは重い可能性があるので、本来はdebounce（連打防止）推奨だが
+      // 頻繁に変更するものではないと仮定して直接送信
+      await callApi("updatePhone", { date: date, time: time, name: name, phone: value }, "null", "保存中...");
   };
 
   async function callApi(action, params, btnId, loadingText) {
@@ -819,10 +833,13 @@
       });
       paymentSelectHtml += `</select>`;
 
-      // ★面談方式列(row[23]=X列)
-      // ローカルストレージではなくスプレッドシートから読み込む
-      const currentMethod = row[23] || "Google Meet";
+      const methodKey = `method_${row[2]}_${row[3]}_${name}`;
+      const savedMethod = localStorage.getItem(methodKey) || "Google Meet";
       const methodOptions = ["Google Meet", "電話", "LINE", "メール", "その他"];
+      
+      // X列から面談方式を取得
+      const currentMethod = row[23] || "Google Meet";
+      
       let methodSelectHtml = `<select class="common-select" onclick="event.stopPropagation()" onchange="updateMethod('${row[2]}', '${row[3]}', '${name}', this.value)">`;
       methodOptions.forEach(opt => {
           methodSelectHtml += `<option ${opt === currentMethod ? 'selected' : ''}>${opt}</option>`;
@@ -830,7 +847,6 @@
       methodSelectHtml += `</select>`;
 
       const assignKey = `assign_${row[2]}_${row[3]}_${name}`;
-      // ★担当列(row[22]=W列)
       const currentAssign = row[22] || ""; 
       const staffList = ["Aさん", "Bさん", "Cさん", "Dさん", "Eさん", "Fさん", "Gさん", "Hさん"];
       
@@ -842,7 +858,18 @@
       });
       assignSelectHtml += `</select>`;
 
-      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td class="${statusClass}">${row[5]}</td><td>${methodSelectHtml}</td><td>${assignSelectHtml}</td><td>${accountBadge}</td><td>${meetUrl}</td><td>${copyBtn}</td><td>${paymentSelectHtml}</td>`;
+      // ★ここが修正ポイント：電話の場合のアカウント列の表示切り替え
+      let accountCellHtml = "";
+      if (currentMethod === "電話") {
+          // 電話番号入力欄（Y列=row[24]）
+          const phoneVal = row[24] || "";
+          accountCellHtml = `<input type="text" class="phone-input" placeholder="電話番号" value="${phoneVal}" onclick="event.stopPropagation()" onchange="updatePhone('${row[2]}', '${row[3]}', '${name}', this.value)">`;
+      } else {
+          // 通常のアカウントバッジ
+          accountCellHtml = accountBadge;
+      }
+
+      tr.innerHTML = `<td>${row[2]}</td><td>${row[3]}</td><td style="font-weight:bold">${name}</td><td class="${statusClass}">${row[5]}</td><td>${methodSelectHtml}</td><td>${assignSelectHtml}</td><td>${accountCellHtml}</td><td>${meetUrl}</td><td>${copyBtn}</td><td>${paymentSelectHtml}</td>`;
       tr.onclick = () => {
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         tr.classList.add('selected');
