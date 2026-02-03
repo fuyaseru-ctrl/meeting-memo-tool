@@ -554,7 +554,8 @@
         const key = `method_${formattedDate}_${formattedTime}_${n}`;
         localStorage.setItem(key, m);
 
-        await callApi("manualAdd", { date: d, time: t + ":00", name: n, status: s }, "btnAddManual", "追加中...");
+        // ★新規追加時に面談方式も送信
+        await callApi("manualAdd", { date: d, time: t + ":00", name: n, status: s, method: m }, "btnAddManual", "追加中...");
         addNameEl.value = "";
         alert("追加しました！リストを更新します。");
         loadData();
@@ -588,7 +589,6 @@
         }
     };
 
-    // 担当割り振り（GAS経由）
     document.getElementById('btnAssignStaff').onclick = async () => {
         if(!currentSelectedDateStr) { alert("カレンダーから日付を選んでください"); return; }
         const count = parseInt(assignStaffCountEl.value);
@@ -604,9 +604,13 @@
       await callApi("updatePayment", { date: date, time: time, name: name, method: value }, "null", "更新中...");
   };
 
-  // 担当者手動変更（GAS経由）
   window.updateAssign = async (date, time, name, value) => {
       await callApi("updateAssign", { date: date, time: time, name: name, staff: value }, "null", "更新中...");
+  };
+
+  // ★追加：面談方式手動変更（GAS経由）
+  window.updateMethod = async (date, time, name, value) => {
+      await callApi("updateMethod", { date: date, time: time, name: name, method: value }, "null", "更新中...");
   };
 
   async function callApi(action, params, btnId, loadingText) {
@@ -728,7 +732,6 @@
     }
   }
 
-  // リスト描画（3分割対応・担当W列・入金U列）
   function renderList(data, isFiltered=false) {
     const salesTbody = document.getElementById('salesTableBody');
     const supportTbody = document.getElementById('supportTableBody');
@@ -816,16 +819,18 @@
       });
       paymentSelectHtml += `</select>`;
 
-      const methodKey = `method_${row[2]}_${row[3]}_${name}`;
-      const savedMethod = localStorage.getItem(methodKey) || "Google Meet";
+      // ★面談方式列(row[23]=X列)
+      // ローカルストレージではなくスプレッドシートから読み込む
+      const currentMethod = row[23] || "Google Meet";
       const methodOptions = ["Google Meet", "電話", "LINE", "メール", "その他"];
-      let methodSelectHtml = `<select class="common-select" onclick="event.stopPropagation()" onchange="updateMethod('${methodKey}', this.value)">`;
+      let methodSelectHtml = `<select class="common-select" onclick="event.stopPropagation()" onchange="updateMethod('${row[2]}', '${row[3]}', '${name}', this.value)">`;
       methodOptions.forEach(opt => {
-          methodSelectHtml += `<option ${opt === savedMethod ? 'selected' : ''}>${opt}</option>`;
+          methodSelectHtml += `<option ${opt === currentMethod ? 'selected' : ''}>${opt}</option>`;
       });
       methodSelectHtml += `</select>`;
 
-      // ★担当列(row[22]=W列)をプルダウンに
+      const assignKey = `assign_${row[2]}_${row[3]}_${name}`;
+      // ★担当列(row[22]=W列)
       const currentAssign = row[22] || ""; 
       const staffList = ["Aさん", "Bさん", "Cさん", "Dさん", "Eさん", "Fさん", "Gさん", "Hさん"];
       
@@ -846,14 +851,13 @@
         selectedCustomerName = name;
         nameDisplay.textContent = `選択中: ${name}`;
         selectedMeetUrl = row[18];
-        const currentMethod = localStorage.getItem(methodKey) || "Google Meet";
+        const currentMethod = row[23] || "Google Meet";
         const methodEl = document.getElementById("method");
         methodEl.value = currentMethod;
         renderPreview();
         if(window.innerWidth < 600) document.getElementById('toolBox').scrollIntoView({behavior:"smooth"});
       };
 
-      // 3分割振り分け
       if (statusStr.includes("キャンセル")) {
           canceledFragment.appendChild(tr);
           hasCanceled = true;
@@ -877,14 +881,6 @@
     if(!hasCanceled) canceledTbody.innerHTML = emptyRow;
     else canceledTbody.appendChild(canceledFragment);
   }
-
-  window.updateMethod = (key, value) => {
-      localStorage.setItem(key, value);
-      const methodEl = document.getElementById("method");
-      methodEl.value = value;
-      const event = new Event('change');
-      methodEl.dispatchEvent(event);
-  };
 
   window.copyToClipboard = async (text) => {
     try {
