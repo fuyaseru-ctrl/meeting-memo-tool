@@ -333,6 +333,8 @@
       
       <button id="btnCopyReminder" style="margin-top:12px; background:#4b5563; color:#fff;">📧 リマインド文コピー (30分前)</button>
       
+      <button id="btnCopyPhoneReminder" style="margin-top:8px; background:#059669; color:#fff;">📞 電話面談リマインドコピー</button>
+      
       <div style="margin-top:20px; padding-top:20px; border-top:1px solid #eee;">
           <h1>👨‍💻 本日の担当割当</h1>
           <div class="assign-area">
@@ -477,6 +479,7 @@
     document.getElementById('copyAllBtn').onclick = () => copyText(buildFullMessage(), "全文コピー完了");
     document.getElementById('copyDateBtn').onclick = () => copyText(buildDateBox(), "日時コピー完了");
     
+    // Meetリマインド
     document.getElementById('btnCopyReminder').onclick = () => {
         if (!selectedCustomerName) { alert("リストから人を選んでください"); return; }
         
@@ -498,6 +501,21 @@
 
         copyText(reminderText, "リマインド文をコピーしました！（データクリア済み）");
 
+        selectedCustomerName = "";
+        selectedMeetUrl = "";
+        document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
+        nameDisplay.textContent = "";
+    };
+
+    // ▼▼▼ 追加：電話面談リマインド ▼▼▼
+    document.getElementById('btnCopyPhoneReminder').onclick = () => {
+        if (!selectedCustomerName) { alert("リストから人を選んでください"); return; }
+        
+        const reminderText = `${selectedCustomerName} 様：面談【 30分前 】です。\n\n\nフヤセルサポートです。\n\n━━━━━━━━━━━━━\nフヤセル面談（電話面談）\n━━━━━━━━━━━━━\n\n開始時間、\n「３０分前」になりましたので\nご連絡をさせていただきました。\n\n予約時間になりましたら\nこちらからご連絡を差し上げますので\n今しばらくお待ちくださいませ。\n\n\n現時点でご不明点などは\nごさいませんでしょうか。\n\n何かございましたら\nお気軽にご連絡ください。\n\n\nそれでは、\n${selectedCustomerName} 様とお話できること\n楽しみにしております。\n\n本日はどうぞ、\nよろしくお願いいたします。\n\n※※無断キャンセル厳禁※※\n\n何かしらのご事情で\nご参加が難しいという場合は\n事前にご一報ください。\n\nご協力のほど、\nよろしくお願いいたします。`;
+
+        copyText(reminderText, "電話面談リマインドをコピーしました！（データクリア済み）");
+
+        // データクリア
         selectedCustomerName = "";
         selectedMeetUrl = "";
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
@@ -620,7 +638,6 @@
       await callApi("updateMethod", { date: date, time: time, name: name, method: value }, "null", "更新中...");
   };
 
-  // ★追加：電話番号更新（GAS経由）
   window.updatePhone = async (date, time, name, value) => {
       await callApi("updatePhone", { date: date, time: time, name: name, phone: value }, "null", "保存中...");
   };
