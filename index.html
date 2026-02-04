@@ -620,7 +620,7 @@
       await callApi("updateMethod", { date: date, time: time, name: name, method: value }, "null", "更新中...");
   };
 
-  // ★修正：電話番号更新
+  // ★追加：電話番号更新（GAS経由）
   window.updatePhone = async (date, time, name, value) => {
       await callApi("updatePhone", { date: date, time: time, name: name, phone: value }, "null", "保存中...");
   };
@@ -851,13 +851,11 @@
       });
       assignSelectHtml += `</select>`;
 
-      // ★ここが最終修正ポイント：電話番号自動表示（優先順位: 保存されたY列 > マスタR列）
       let accountCellHtml = "";
       if (currentMethod === "電話") {
-          const manualPhone = row[24]; // Y列（保存済み番号）
-          const masterPhone = row[17]; // R列（元データ）
+          const manualPhone = row[24]; 
+          const masterPhone = row[17]; 
           
-          // 保存された番号があればそれを、なければ元データの番号を表示
           const displayPhone = manualPhone || masterPhone || "";
           
           accountCellHtml = `<input type="text" class="phone-input" placeholder="電話番号" value="${displayPhone}" onclick="event.stopPropagation()" onchange="updatePhone('${row[2]}', '${row[3]}', '${name}', this.value)">`;
