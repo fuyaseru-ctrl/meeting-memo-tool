@@ -440,7 +440,7 @@
   const paymentSummaryBox = document.getElementById("paymentSummaryBox");
   const paymentDetailList = document.getElementById("paymentDetailList");
   const assignStaffCountEl = document.getElementById("assignStaffCount");
-  const paymentMonthFilter = document.getElementById("paymentMonthFilter"); // 月選択プルダウン
+  const paymentMonthFilter = document.getElementById("paymentMonthFilter");
 
   const normalizeMap = {
       "クレカ分割 6分割": "クレカ 6分割",
@@ -499,27 +499,15 @@
     // Meetリマインド
     document.getElementById('btnCopyReminder').onclick = () => {
         if (!selectedCustomerName) { alert("リストから人を選んでください"); return; }
-        
-        const v = dateEl.value; 
-        const tVal = timeEl.value;
-        if(!v) { alert("日付が無効です"); return; }
-        
+        const v = dateEl.value; const tVal = timeEl.value; if(!v) return;
         const d = new Date(v + "T00:00:00");
-        const y = d.getFullYear();
-        const m = d.getMonth() + 1;
-        const dt = d.getDate();
         const w = week[d.getDay()];
         const timeStr = tVal.includes(":") ? tVal : tVal + ":00";
-        
-        const formattedDateTime = `${y}年${m}月${dt}日(${w}) ${timeStr}`;
+        const formattedDateTime = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日(${w}) ${timeStr}`;
         const meetUrl = selectedMeetUrl || "（URL未発行）";
-
         const reminderText = `${selectedCustomerName}様：ご予約【 30分前 】です。参加URLをご確認ください\n\n\nフヤセルサポートです。\n\n━━━━━━━━━━━━━\nフヤセル式\nマンツーマンサポート\n━━━━━━━━━━━━━\n\n◇ 予約日時\n◆◆◆ー予約日時記入ー◆◆◆\n${formattedDateTime}\n\n開始時間、\n「３０分前」になりましたので\nGoogle Meet 参加用のURLを\nお送りさせていただきます。\n\n\n▼コチラからご参加ください\n${meetUrl}\n\n予約時間になりましたら\nURLをクリックして\nMeetにご参加ください。\n\n※ PCでのご利用 ※\nPCでご利用になる場合は\nこちらのリンクを\nPCでログイン済みのブラウザに\n張り付けてご利用ください。\n\n\nエラベル×マワセル＝フヤセル\n\n\nこのマンツーマンサポートは\nもっと資産を増やしたい！\n\n「そんな人のための６０分」\n\n\n現時点でご不明点などは\nごさいませんでしょうか。\n\n何かございましたら\nお気軽にご連絡ください。\n\n\nそれでは、\n${selectedCustomerName}様とお話できること\n楽しみにしております。\n\n本日はどうぞ、\nよろしくお願いいたします。\n\n※※無断キャンセル厳禁※※\n\n何かしらのご事情で\nご参加が難しいという場合は\n事前にご一報ください。\n\nご協力のほど、\nよろしくお願いいたします。`;
-
         copyText(reminderText, "リマインド文をコピーしました！（データクリア済み）");
-
-        selectedCustomerName = "";
-        selectedMeetUrl = "";
+        selectedCustomerName = ""; selectedMeetUrl = "";
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         nameDisplay.textContent = "";
     };
@@ -527,13 +515,9 @@
     // 電話面談リマインド
     document.getElementById('btnCopyPhoneReminder').onclick = () => {
         if (!selectedCustomerName) { alert("リストから人を選んでください"); return; }
-        
         const reminderText = `${selectedCustomerName} 様：面談【 30分前 】です。\n\n\nフヤセルサポートです。\n\n━━━━━━━━━━━━━\nフヤセル面談（電話面談）\n━━━━━━━━━━━━━\n\n開始時間、\n「３０分前」になりましたので\nご連絡をさせていただきました。\n\n予約時間になりましたら\nこちらからご連絡を差し上げますので\n今しばらくお待ちくださいませ。\n\n\n現時点でご不明点などは\nごさいませんでしょうか。\n\n何かございましたら\nお気軽にご連絡ください。\n\n\nそれでは、\n${selectedCustomerName} 様とお話できること\n楽しみにしております。\n\n本日はどうぞ、\nよろしくお願いいたします。\n\n※※無断キャンセル厳禁※※\n\n何かしらのご事情で\nご参加が難しいという場合は\n事前にご一報ください。\n\nご協力のほど、\nよろしくお願いいたします。`;
-
         copyText(reminderText, "電話面談リマインドをコピーしました！（データクリア済み）");
-
-        selectedCustomerName = "";
-        selectedMeetUrl = "";
+        selectedCustomerName = ""; selectedMeetUrl = "";
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         nameDisplay.textContent = "";
     };
@@ -593,15 +577,12 @@
         const n = addNameEl.value;
         const s = addStatusEl.value;
         const m = addMethodEl.value;
-
         if(!d || !n) { alert("日付とお名前は必須です"); return; }
         if(!confirm(`${d} ${t}時～\n${n} 様\nステータス: ${s}\n面談方式: ${m}\n\nこの内容で予約を追加しますか？`)) return;
-        
         const formattedDate = d.replace(/-/g, '.');
         const formattedTime = (t.length === 1 ? '0' + t : t) + ":00";
         const key = `method_${formattedDate}_${formattedTime}_${n}`;
         localStorage.setItem(key, m);
-
         await callApi("manualAdd", { date: d, time: t + ":00", name: n, status: s, method: m }, "btnAddManual", "追加中...");
         addNameEl.value = "";
         alert("追加しました！リストを更新します。");
@@ -611,21 +592,12 @@
     document.getElementById('btnDeleteRow').onclick = async () => {
         if(!selectedCustomerName) { alert("リストから削除したい人を選んでください"); return; }
         if(!confirm(`【予約削除】\n${selectedCustomerName} 様の予約を削除しますか？\n\n・カレンダーの予定は削除されます\n・ツール上のリストから消えます\n・スプレッドシートのデータは「削除」ステータスで残ります`)) return;
-        
         const btn = document.getElementById("btnDeleteRow");
         btn.textContent = "削除処理中..."; btn.disabled = true;
-
         try {
-            await fetch(API_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ action: "cancelStatus", date: dateEl.value, time: timeEl.value, name: selectedCustomerName }) 
-            });
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "cancelStatus", date: dateEl.value, time: timeEl.value, name: selectedCustomerName }) });
             await new Promise(r => setTimeout(r, 500)); 
-            const response = await fetch(API_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ action: "updateStatus", date: dateEl.value, time: timeEl.value, name: selectedCustomerName, newStatus: "削除" }) 
-            });
-            
+            const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "updateStatus", date: dateEl.value, time: timeEl.value, name: selectedCustomerName, newStatus: "削除" }) });
             alert("削除しました（リストから非表示になりました）");
             selectedCustomerName = "";
             loadData();
@@ -640,15 +612,20 @@
         if(!currentSelectedDateStr) { alert("カレンダーから日付を選んでください"); return; }
         const count = parseInt(assignStaffCountEl.value);
         const formattedDate = currentSelectedDateStr.replace(/\./g, '-');
-        
         if(!confirm(`【担当割り振り】\n日付: ${formattedDate}\n稼働人数: ${count}人\n\n「予約確定」のデータのみ割り振りますか？`)) return;
-        
         await callApi("assignStaff", { date: formattedDate, staffCount: count }, "btnAssignStaff", "計算中...");
     };
   }
 
+  // ★修正：入金プルダウン変更時の処理
   window.updatePayment = async (date, time, name, value) => {
-      await callApi("updatePayment", { date: date, time: time, name: name, method: value }, "null", "更新中...");
+      let payDate = "";
+      if (value !== "") {
+          const defaultDate = new Date().toISOString().slice(0, 10); // 今日 YYYY-MM-DD
+          payDate = prompt("入金日を入力してください (YYYY-MM-DD)", defaultDate);
+          if (payDate === null) return; // キャンセルなら中断
+      }
+      await callApi("updatePayment", { date: date, time: time, name: name, method: value, payDate: payDate }, "null", "更新中...");
   };
 
   window.updateAssign = async (date, time, name, value) => {
@@ -685,28 +662,28 @@
     fetch(API_URL).then(res => res.json()).then(data => {
         allData = data;
         
-        // --- 1. 月ごとのリストを作成してプルダウンにセット ---
+        // --- 1. 月選択肢の作成（Z列：入金日基準） ---
         const monthSet = new Set();
         const today = new Date();
         const currentMonthStr = `${today.getFullYear()}.${('0'+(today.getMonth()+1)).slice(-2)}`;
         
         allData.forEach(row => {
-            const d = row[2]; // 来店日(YYYY.MM.DD)
-            if(d && d.length >= 7) {
-                const ym = d.substring(0, 7); // YYYY.MM
+            // Z列(row[25])があれば優先、なければ来店日(row[2])
+            const zDate = row[25]; 
+            const cDate = row[2];
+            const targetDate = (zDate && zDate !== "") ? zDate : cDate;
+
+            if(targetDate && targetDate.length >= 7) {
+                const ym = targetDate.substring(0, 7); // YYYY.MM
                 monthSet.add(ym);
             }
         });
         
-        // ソート（降順：新しい月が上）
         const sortedMonths = Array.from(monthSet).sort().reverse();
-        
         paymentMonthFilter.innerHTML = "";
         
-        // 「今月」をデフォルトにするロジック
         let hasCurrentMonth = false;
         
-        // 選択肢作成
         sortedMonths.forEach(m => {
             const opt = document.createElement("option");
             opt.value = m;
@@ -718,19 +695,16 @@
             paymentMonthFilter.appendChild(opt);
         });
         
-        // 全期間オプション（最後に追加）
         const allOpt = document.createElement("option");
         allOpt.value = "ALL";
         allOpt.textContent = "全期間";
         if (!hasCurrentMonth && sortedMonths.length > 0) {
-             // 今月データがない場合は最新月を選択状態にする
              paymentMonthFilter.options[0].selected = true;
         } else if (sortedMonths.length === 0) {
              allOpt.selected = true;
         }
         paymentMonthFilter.appendChild(allOpt);
 
-        // --- 2. 初回集計実行 ---
         renderPaymentSummary(paymentMonthFilter.value);
 
         if (currentSelectedDateStr) filterListByDate(currentSelectedDateStr);
@@ -748,7 +722,7 @@
     });
   }
 
-  // ★追加：入金集計表示関数
+  // ★修正：入金集計ロジック（Z列優先）
   function renderPaymentSummary(targetMonth) {
       const paymentOrder = [
             "銀振一括",
@@ -764,23 +738,28 @@
         let totalPaid = 0;
         
         allData.forEach(row => {
+            const status = String(row[5] || "");
+            if (status === "削除") return;
+
+            let payment = String(row[20] || "").trim();
+            if (payment === "") return;
+
             // 月フィルタリング
             if (targetMonth !== "ALL") {
-                const d = row[2]; // YYYY.MM.DD
-                if (!d || !d.startsWith(targetMonth)) return; // 対象月でなければスキップ
-            }
+                // Z列(row[25])があれば優先、なければ来店日(row[2])
+                const zDate = row[25]; 
+                const cDate = row[2];
+                const targetDate = (zDate && zDate !== "") ? zDate : cDate;
 
-            const status = String(row[5] || "");
-            let payment = String(row[20] || "").trim();
+                if (!targetDate || !targetDate.startsWith(targetMonth)) return; 
+            }
             
             if (normalizeMap[payment]) {
                 payment = normalizeMap[payment];
             }
 
-            if (status !== "削除" && payment !== "") {
-                totalPaid++;
-                counts[payment] = (counts[payment] || 0) + 1;
-            }
+            totalPaid++;
+            counts[payment] = (counts[payment] || 0) + 1;
         });
 
         const titleEl = document.getElementById("paymentTotalTitle");
