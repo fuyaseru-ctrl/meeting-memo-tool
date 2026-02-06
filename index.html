@@ -136,6 +136,7 @@
         font-size: 12px;
     }
 
+    /* 入金集計エリア */
     .payment-summary-box {
         margin-top: 15px;
         padding: 15px;
@@ -144,6 +145,18 @@
         border-radius: 8px;
         color: #92400e;
         text-align: center;
+    }
+    /* 月選択プルダウン */
+    .payment-month-select {
+        margin-bottom: 10px;
+        padding: 4px 8px;
+        border: 1px solid #fcd34d;
+        border-radius: 4px;
+        font-size: 14px;
+        color: #92400e;
+        background: #fff;
+        font-weight: bold;
+        cursor: pointer;
     }
     .payment-total-title {
         font-size: 1.1em;
@@ -390,7 +403,10 @@
       <button class="add-btn" id="btnAddManual" style="margin-top:20px;">＋ 予約を追加する</button>
       
       <div id="paymentSummaryBox" class="payment-summary-box">
-          <div class="payment-total-title">💰 合計入金件数：集計中...</div>
+          <div style="text-align:right;">
+              <select id="paymentMonthFilter" class="payment-month-select"></select>
+          </div>
+          <div class="payment-total-title" id="paymentTotalTitle">💰 合計入金件数：集計中...</div>
           <div id="paymentDetailList" class="payment-detail-list"></div>
       </div>
     </div>
@@ -424,6 +440,7 @@
   const paymentSummaryBox = document.getElementById("paymentSummaryBox");
   const paymentDetailList = document.getElementById("paymentDetailList");
   const assignStaffCountEl = document.getElementById("assignStaffCount");
+  const paymentMonthFilter = document.getElementById("paymentMonthFilter"); // 月選択プルダウン
 
   const normalizeMap = {
       "クレカ分割 6分割": "クレカ 6分割",
@@ -507,7 +524,7 @@
         nameDisplay.textContent = "";
     };
 
-    // ▼▼▼ 追加：電話面談リマインド ▼▼▼
+    // 電話面談リマインド
     document.getElementById('btnCopyPhoneReminder').onclick = () => {
         if (!selectedCustomerName) { alert("リストから人を選んでください"); return; }
         
@@ -515,11 +532,15 @@
 
         copyText(reminderText, "電話面談リマインドをコピーしました！（データクリア済み）");
 
-        // データクリア
         selectedCustomerName = "";
         selectedMeetUrl = "";
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         nameDisplay.textContent = "";
+    };
+
+    // 月選択変更時に再集計
+    paymentMonthFilter.onchange = () => {
+        renderPaymentSummary(paymentMonthFilter.value);
     };
 
     dateEl.onchange = renderPreview;
@@ -664,7 +685,72 @@
     fetch(API_URL).then(res => res.json()).then(data => {
         allData = data;
         
-        const paymentOrder = [
+        // --- 1. 月ごとのリストを作成してプルダウンにセット ---
+        const monthSet = new Set();
+        const today = new Date();
+        const currentMonthStr = `${today.getFullYear()}.${('0'+(today.getMonth()+1)).slice(-2)}`;
+        
+        allData.forEach(row => {
+            const d = row[2]; // 来店日(YYYY.MM.DD)
+            if(d && d.length >= 7) {
+                const ym = d.substring(0, 7); // YYYY.MM
+                monthSet.add(ym);
+            }
+        });
+        
+        // ソート（降順：新しい月が上）
+        const sortedMonths = Array.from(monthSet).sort().reverse();
+        
+        paymentMonthFilter.innerHTML = "";
+        
+        // 「今月」をデフォルトにするロジック
+        let hasCurrentMonth = false;
+        
+        // 選択肢作成
+        sortedMonths.forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m;
+            opt.textContent = m.replace('.', '年') + '月';
+            if (m === currentMonthStr) {
+                opt.selected = true;
+                hasCurrentMonth = true;
+            }
+            paymentMonthFilter.appendChild(opt);
+        });
+        
+        // 全期間オプション（最後に追加）
+        const allOpt = document.createElement("option");
+        allOpt.value = "ALL";
+        allOpt.textContent = "全期間";
+        if (!hasCurrentMonth && sortedMonths.length > 0) {
+             // 今月データがない場合は最新月を選択状態にする
+             paymentMonthFilter.options[0].selected = true;
+        } else if (sortedMonths.length === 0) {
+             allOpt.selected = true;
+        }
+        paymentMonthFilter.appendChild(allOpt);
+
+        // --- 2. 初回集計実行 ---
+        renderPaymentSummary(paymentMonthFilter.value);
+
+        if (currentSelectedDateStr) filterListByDate(currentSelectedDateStr);
+        else renderList(sortDataByDateDesc(allData)); 
+        renderCalendar();
+        document.getElementById('loading').style.display = 'none';
+        
+        document.getElementById('salesTable').style.display = 'table';
+        document.getElementById('supportTable').style.display = 'table';
+        document.getElementById('canceledTable').style.display = 'table';
+        
+    }).catch(err => {
+        document.getElementById('loading').textContent = "読み込みエラー";
+        alert("データの読み込みに失敗しました。");
+    });
+  }
+
+  // ★追加：入金集計表示関数
+  function renderPaymentSummary(targetMonth) {
+      const paymentOrder = [
             "銀振一括",
             "クレカ一括",
             "クレカ 6分割",
@@ -678,6 +764,12 @@
         let totalPaid = 0;
         
         allData.forEach(row => {
+            // 月フィルタリング
+            if (targetMonth !== "ALL") {
+                const d = row[2]; // YYYY.MM.DD
+                if (!d || !d.startsWith(targetMonth)) return; // 対象月でなければスキップ
+            }
+
             const status = String(row[5] || "");
             let payment = String(row[20] || "").trim();
             
@@ -691,8 +783,9 @@
             }
         });
 
-        const titleEl = document.querySelector(".payment-total-title");
-        titleEl.textContent = `💰 合計入金件数：${totalPaid} 件`;
+        const titleEl = document.getElementById("paymentTotalTitle");
+        const monthLabel = targetMonth === "ALL" ? "全期間" : targetMonth.replace('.', '年') + '月';
+        titleEl.textContent = `💰 ${monthLabel} 合計：${totalPaid} 件`;
 
         let detailHtml = "";
         let displayedCount = 0;
@@ -713,25 +806,10 @@
         }
         
         if (displayedCount === 0) {
-            detailHtml = "<div style='text-align:center; color:#999; font-size:12px;'>（まだありません）</div>";
+            detailHtml = "<div style='text-align:center; color:#999; font-size:12px;'>（データなし）</div>";
         }
         
-        paymentDetailList.innerHTML = detailHtml;
-
-        if (currentSelectedDateStr) filterListByDate(currentSelectedDateStr);
-        else renderList(sortDataByDateDesc(allData)); 
-        renderCalendar();
-        document.getElementById('loading').style.display = 'none';
-        
-        // テーブル全表示
-        document.getElementById('salesTable').style.display = 'table';
-        document.getElementById('supportTable').style.display = 'table';
-        document.getElementById('canceledTable').style.display = 'table';
-        
-    }).catch(err => {
-        document.getElementById('loading').textContent = "読み込みエラー";
-        alert("データの読み込みに失敗しました。");
-    });
+        document.getElementById("paymentDetailList").innerHTML = detailHtml;
   }
 
   function renderCalendar() {
