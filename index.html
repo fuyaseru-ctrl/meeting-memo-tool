@@ -662,7 +662,7 @@
     fetch(API_URL).then(res => res.json()).then(data => {
         allData = data;
         
-        // ▼▼▼ 修正：月選択肢の作成ロジック（Z列のみ参照＋入金済みの救済） ▼▼▼
+        // ▼▼▼ 修正：「全期間」を先頭固定にして月リストを作成 ▼▼▼
         const monthSet = new Set();
         const today = new Date();
         const currentMonthStr = `${today.getFullYear()}.${('0'+(today.getMonth()+1)).slice(-2)}`;
@@ -676,8 +676,7 @@
                 const ym = zDate.substring(0, 7); // YYYY.MM
                 monthSet.add(ym);
             } 
-            // 2. Z列がないけど、入金方法が「未(削除)」以外で設定されている場合（過去データ救済）
-            //    この場合は「来店日」を入金日とみなしてリストに加える
+            // 2. Z列がないけど、入金方法が設定されている場合（過去データ救済）
             else if (paymentMethod && paymentMethod !== "" && row[2] && row[2].length >= 7) {
                 const ym = row[2].substring(0, 7);
                 monthSet.add(ym);
@@ -687,8 +686,15 @@
         const sortedMonths = Array.from(monthSet).sort().reverse();
         paymentMonthFilter.innerHTML = "";
         
+        // 1. まず「全期間」を先頭に追加
+        const allOpt = document.createElement("option");
+        allOpt.value = "ALL";
+        allOpt.textContent = "全期間";
+        paymentMonthFilter.appendChild(allOpt);
+        
         let hasCurrentMonth = false;
         
+        // 2. 月ごとの選択肢を追加（降順）
         sortedMonths.forEach(m => {
             const opt = document.createElement("option");
             opt.value = m;
@@ -700,19 +706,16 @@
             paymentMonthFilter.appendChild(opt);
         });
         
-        // データが何もない、または今月データがない場合の初期選択処理
-        const allOpt = document.createElement("option");
-        allOpt.value = "ALL";
-        allOpt.textContent = "全期間";
-        
-        if (sortedMonths.length === 0) {
-             allOpt.selected = true;
-        } else if (!hasCurrentMonth) {
-             // 今月がリストになければ、最新の月を選択状態にする
-             if(paymentMonthFilter.options.length > 0) paymentMonthFilter.options[0].selected = true;
+        // 今月データがない場合
+        if (!hasCurrentMonth) {
+             // データがあるなら最新月を選択、なければ「全期間」を選択
+             if (sortedMonths.length > 0) {
+                 // option[0]は全期間なので、option[1]が最新月
+                 paymentMonthFilter.options[1].selected = true;
+             } else {
+                 allOpt.selected = true;
+             }
         }
-        
-        paymentMonthFilter.appendChild(allOpt);
 
         renderPaymentSummary(paymentMonthFilter.value);
 
@@ -731,7 +734,7 @@
     });
   }
 
-  // ★修正：入金集計ロジック（Z列必須＋救済措置）
+  // 入金集計ロジック
   function renderPaymentSummary(targetMonth) {
       const paymentOrder = [
             "銀振一括",
@@ -756,13 +759,9 @@
             // 月フィルタリング
             if (targetMonth !== "ALL") {
                 const zDate = row[25]; // 入金日(Z列)
-                
-                // 1. Z列があればそれを使う
                 if (zDate && zDate !== "") {
                     if (!zDate.startsWith(targetMonth)) return; 
-                } 
-                // 2. Z列がない場合の救済（来店日で判定）
-                else {
+                } else {
                     const cDate = row[2]; // 来店日
                     if (!cDate || !cDate.startsWith(targetMonth)) return;
                 }
