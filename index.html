@@ -363,6 +363,8 @@
           <button id="btnCopyPositiveMonthly" class="btn-half" style="background:#5e35b1; color:#fff;">【月次面ポジコメ狙】</button>
       </div>
       
+      <button id="btnCopyThanks" style="margin-top:8px; background:#ea580c; color:#fff;">ポジコメthx！</button>
+      
       <div style="margin-top:20px; padding-top:20px; border-top:1px solid #eee;">
           <h1>👨‍💻 本日の担当割当</h1>
           <div class="assign-area">
@@ -537,28 +539,32 @@
         nameDisplay.textContent = "";
     };
 
-    // ▼▼▼ 追加：初面ポジコメ狙コピー ▼▼▼
+    // 初面ポジコメ狙コピー
     document.getElementById('btnCopyPositiveFirst').onclick = () => {
-        // 名前があれば埋め込み、なければ {name} のまま
         const namePart = selectedCustomerName ? selectedCustomerName : "{name}";
-        
         const text = `─【FUYASERU】─\nフヤセルコンサルサポートです。\n￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣\n\n${namePart}様\n本日は貴重なお時間をいただき、\n誠にありがとうございました。\n\n本日の面談は、\n${namePart}様の投資状況や\nお考えを正確に把握するための\n「ヒアリング」が中心でした。\n\nここで伺えた内容をもとに、\n今後は講師陣・スタッフも含めて、\n${namePart}様に適切なサポートの形\n（確認ポイント・質問の仕方・進め方）\nを整えてまいります。\n\n\nもし差し支えなければ、\n今後のサポート精度を上げるために、\n1分だけ簡単なアンケートに\nご協力いただけますでしょうか。\n\n※長文でなくて大丈夫です\n※箇条書きでもOKです\n※「うまく書こう」と思わなくて大丈夫です\n\n「なんとなく安心した」\n「少し前向きになれた」\n「ワクワクしている」\n\nのような一言でも、\n十分参考になります。\n\n特に、${namePart}様が\n面談を通して\n\nフヤセルなら\nこれまでできなかった投資が\n\n「できそう」\n\nと感じた点があれば、\nぜひ教えていただけますと幸いです。\n\n返信はこのまま、\n短くで大丈夫です。\n\nお忙しいところ恐れ入りますが、\n差し支えない範囲で\nご返信いただけますと幸いです。`;
-
         copyText(text, "【初面】アンケート依頼をコピーしました！");
-        
-        // データクリア
         selectedCustomerName = ""; selectedMeetUrl = "";
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         nameDisplay.textContent = "";
     };
 
-    // ▼▼▼ 追加：月次面ポジコメ狙コピー ▼▼▼
+    // 月次面ポジコメ狙コピー
     document.getElementById('btnCopyPositiveMonthly').onclick = () => {
         const namePart = selectedCustomerName ? selectedCustomerName : "{name}";
-        
         const text = `─【FUYASERU】─\nフヤセルコンサルサポートです。\n￣￣￣￣￣￣￣￣￣￣￣￣￣￣￣\n\n${namePart}様\nいつもご活用いただき、\n誠にありがとうございます。\n\n1ヶ月間、\n本当にお疲れさまでした。\n\nまだまだ道半ばではございますが、\nここまでご熱心にフヤセルAIの\n活用を進めていただけていることに\nまずは感謝を申し上げます。\n\nこの1ヶ月、\n${namePart}様が継続して\n取り組まれている内容を踏まえ、\n\n今後さらにサポートの\n精度を高めるために、\n\n1分だけ簡単なアンケートに\nご協力いただけますでしょうか。\n\n「成果が出ている」\n「迷いが減った」\n「色々楽しめている」\n\nのような一言でも、\n十分参考になります。\n\nもし差し支えなければ、\n下記のうち\n\n “ 答えやすいものだけ ” \n\nで構いません。\n\n\n・この1ヶ月で\n「一番変わったこと」\n（変化が1つでOK）\n\n　例：\n　／迷いが減った\n　／判断が速くなった\n　／負けが小さくなった\n　／メンタルが安定した など\n\n・特に役立った点\n（1つでOK）\n\n　例：\n　／確認ポイント\n　／資金管理\n　／売買の型\n　／質問の整理ができた など\n\n・今後、さらに伸ばしたいこと\n（次の目標が1つでOK）\n\n　例：\n　／回転の精度\n　／負け筋を減らす\n　／再現性を上げる など\n\n返信はこのまま、\n短くで大丈夫です。\n\nお忙しいところ恐れ入りますが、\n差し支えない範囲で\nご返信いただけますと幸いです。`;
-
         copyText(text, "【月次】アンケート依頼をコピーしました！");
+        selectedCustomerName = ""; selectedMeetUrl = "";
+        document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
+        nameDisplay.textContent = "";
+    };
+
+    // ▼▼▼ 追加：ポジコメ御礼コピー ▼▼▼
+    document.getElementById('btnCopyThanks').onclick = () => {
+        const namePart = selectedCustomerName ? selectedCustomerName : "{name}";
+        const text = `フヤセルサポートです。\n\nご丁寧にご返答くださり誠に有難う御座います！\n\n貴重なご意見を頂戴できましたので、\nより一層、\n${namePart} 様に寄り添える\nフヤセルAIに進化させられるよう\n尽力してまいりますので、\n引き続きよろしくお願い致します。\n\nまた他にも何かございます場合は\nしっかりとサポートさせていただきますので、\n何なりとお申し付けくださいませ。\n\nなにとぞ、よろしくお願いいたします。`;
+        
+        copyText(text, "ポジコメ御礼をコピーしました！（データクリア済み）");
         
         // データクリア
         selectedCustomerName = ""; selectedMeetUrl = "";
