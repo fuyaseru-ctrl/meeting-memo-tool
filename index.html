@@ -397,7 +397,7 @@
       <label>ステータス</label>
       <select id="addStatus">
         <option>予約確定</option>
-        <option>初回面談</option>
+        <option>緊急面談</option> <option>初回面談</option>
         <option>1ヵ月面談</option>
         <option>2ヵ月面談</option>
         <option>3ヵ月面談</option>
@@ -559,14 +559,11 @@
         nameDisplay.textContent = "";
     };
 
-    // ▼▼▼ 追加：ポジコメ御礼コピー ▼▼▼
+    // ポジコメ御礼コピー
     document.getElementById('btnCopyThanks').onclick = () => {
         const namePart = selectedCustomerName ? selectedCustomerName : "{name}";
         const text = `フヤセルサポートです。\n\nご丁寧にご返答くださり誠に有難う御座います！\n\n貴重なご意見を頂戴できましたので、\nより一層、\n${namePart} 様に寄り添える\nフヤセルAIに進化させられるよう\n尽力してまいりますので、\n引き続きよろしくお願い致します。\n\nまた他にも何かございます場合は\nしっかりとサポートさせていただきますので、\n何なりとお申し付けくださいませ。\n\nなにとぞ、よろしくお願いいたします。`;
-        
         copyText(text, "ポジコメ御礼をコピーしました！（データクリア済み）");
-        
-        // データクリア
         selectedCustomerName = ""; selectedMeetUrl = "";
         document.querySelectorAll('tr').forEach(t => t.classList.remove('selected'));
         nameDisplay.textContent = "";
@@ -944,7 +941,8 @@
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
       
       let statusClass = "";
-      if (statusStr === "初回面談") statusClass = "status-red";
+      // ★修正：緊急面談も赤文字にする
+      if (statusStr === "初回面談" || statusStr === "緊急面談") statusClass = "status-red";
       else if (statusStr.includes("ヵ月面談")) statusClass = "status-blue";
       else if (statusStr === "満期面談") statusClass = "status-orange";
 
