@@ -178,9 +178,11 @@
         justify-content: space-between;
     }
 
+    /* ▼▼▼ ステータスカラー設定（紫を追加） ▼▼▼ */
     .status-red { color: #e11d48; font-weight: bold; }
     .status-blue { color: #2563eb; font-weight: bold; }
     .status-orange { color: #d97706; font-weight: bold; }
+    .status-purple { color: #9333ea; font-weight: bold; } /* 鮮やかな紫 */
 
     /* --- Box --- */
     .box { background: #fff; padding: 20px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative; margin-bottom: 20px; }
@@ -941,8 +943,8 @@
       const copyBtn = row[18] ? `<button class="copy-link-btn" title="リンクをコピー" onclick="event.stopPropagation(); copyToClipboard('${row[18]}')">📋</button>` : "";
       
       let statusClass = "";
-      // ★修正：緊急面談も赤文字にする
-      if (statusStr === "初回面談" || statusStr === "緊急面談") statusClass = "status-red";
+      if (statusStr === "初回面談") statusClass = "status-red";
+      else if (statusStr === "緊急面談") statusClass = "status-purple"; // ★修正：緊急面談は紫
       else if (statusStr.includes("ヵ月面談")) statusClass = "status-blue";
       else if (statusStr === "満期面談") statusClass = "status-orange";
 
